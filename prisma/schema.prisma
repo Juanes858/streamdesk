@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/infraestructura/persistencia/generado"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rol {
+  SOLICITANTE
+  AGENTE
+  COORDINADOR
+  ADMINISTRADOR
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nombre    String
+  correo    String   @unique
+  claveHash String
+  rol       Rol      @default(SOLICITANTE)
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+}
