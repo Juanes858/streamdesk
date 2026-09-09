@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye
+    container_name: streamdesk-app
+    volumes:
+      - ..:/workspace:cached
+      # Esto inyecta automáticamente tu archivo .env local dentro del contenedor
+    env_file:
+      - ../.env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/streamdesk_db?schema=public
+      - JWT_SECRET=streamdesk_secreto_desarrollo_2026
+    command: sleep infinity
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+
+  db:
+    image: postgres:15-alpine
+    container_name: streamdesk-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: streamdesk_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
