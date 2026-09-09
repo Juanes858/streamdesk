@@ -4,6 +4,7 @@
 // - `...DTO`  → estructura de datos que cruza una frontera.
 // - Sin sufijo → contratos de comportamiento, que no son ni datos ni persistencia.
 
+import type { Cuenta, CuentaNueva } from '../modelo/Cuenta'
 import type { Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
 
 export interface UsuarioDAO {
@@ -26,4 +27,11 @@ export interface CredencialDTO {
 export interface ServicioTokens {
   emitir(credencial: CredencialDTO): string
   verificar(token: string): CredencialDTO | null
+}
+
+export interface CuentaDAO {
+  guardar(cuenta: CuentaNueva): Promise<Cuenta>
+  porId(id: string): Promise<Cuenta | null>
+   // Para listar el historial de cuentas de un cliente en la mesa de servicio.
+  porCliente(clienteId: string): Promise<Cuenta[]>
 }
