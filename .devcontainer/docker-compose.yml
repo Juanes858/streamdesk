@@ -6,6 +6,9 @@ services:
     container_name: streamdesk-app
     volumes:
       - ..:/workspace:cached
+      # Esto inyecta automáticamente tu archivo .env local dentro del contenedor
+    env_file:
+      - ../.env
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/streamdesk_db?schema=public
