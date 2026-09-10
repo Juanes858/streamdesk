@@ -1,5 +1,4 @@
-import type { PrismaClient } from './generado/client'
-import type { CuentaModel as FilaCuenta } from './generado/models'
+import type { PrismaClient, Cuenta as FilaCuenta, Prisma, $Enums } from './generado/index'
 import type { Cuenta, CuentaNueva, EstadoCuenta } from '../../dominio/modelo/Cuenta'
 import type { CuentaDAO } from '../../dominio/puertos'
 
@@ -17,7 +16,9 @@ export class CuentaDAOPrisma implements CuentaDAO {
   constructor(private readonly prisma: PrismaClient) {}
 
   async guardar(cuenta: CuentaNueva): Promise<Cuenta> {
-    return aDominio(await this.prisma.cuenta.create({ data: cuenta }))
+    return aDominio(await this.prisma.cuenta.create({
+      data: { ...cuenta, estado: cuenta.estado as $Enums.EstadoCuenta },
+    }))
   }
 
   async porId(id: string): Promise<Cuenta | null> {

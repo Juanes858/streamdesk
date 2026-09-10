@@ -10,6 +10,7 @@ export interface Cuenta {
   correoAcceso: string
   estado: EstadoCuenta
   creadoEn: Date
+  // Falta fecha de expiracion y cambiar  tipo de dato de plataforma
 }
 
 /** Una cuenta que todavía no existe: el DAO asigna el id al guardarla. */

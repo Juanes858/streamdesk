@@ -9,10 +9,9 @@ datasource db {
 }
 
 enum Rol {
-  SOLICITANTE
-  AGENTE
-  COORDINADOR
   ADMINISTRADOR
+  ASESOR
+  CLIENTE
 }
 
 model Usuario {
@@ -20,7 +19,7 @@ model Usuario {
   nombre    String
   correo    String   @unique
   claveHash String
-  rol       Rol      @default(SOLICITANTE)
+  rol       Rol      @default(CLIENTE)
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
   cuentas Cuenta[]
@@ -40,5 +39,4 @@ model Cuenta {
   correoAcceso String
   estado       EstadoCuenta @default(ACTIVA)
   creadoEn     DateTime     @default(now())
-}
 }

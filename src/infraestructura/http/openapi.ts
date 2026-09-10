@@ -9,7 +9,7 @@ const usuario = {
     id: { type: 'string', format: 'uuid', example: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c' },
     nombre: { type: 'string', example: 'Ana Agente' },
     correo: { type: 'string', format: 'email', example: 'ana@uam.edu.co' },
-    rol: { type: 'string', enum: ROLES, example: 'AGENTE' },
+    rol: { type: 'string', enum: ROLES, example: 'CLIENTE' },
     activo: { type: 'boolean', example: true },
   },
   required: ['id', 'nombre', 'correo', 'rol', 'activo'],
@@ -29,6 +29,19 @@ const error = {
   type: 'object',
   properties: { error: { type: 'string', example: 'Correo o clave incorrectos' } },
   required: ['error'],
+}
+
+const cuenta = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    clienteId: { type: 'string', format: 'uuid' },
+    plataforma: { type: 'string', example: 'Netflix' },
+    correoAcceso: { type: 'string', format: 'email', example: 'cliente@correo.com' },
+    estado: { type: 'string', enum: ['ACTIVA', 'SUSPENDIDA', 'CANCELADA'], example: 'ACTIVA' },
+    creadoEn: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'clienteId', 'plataforma', 'correoAcceso', 'estado', 'creadoEn'],
 }
 
 const respuestaError = (description: string, ejemplo: string) => ({
@@ -62,6 +75,8 @@ export const openapi = {
   tags: [
     { name: 'Salud', description: 'Verificación de que el servicio responde.' },
     { name: 'Autenticación', description: 'Registro de usuarios, inicio de sesión y consulta del perfil propio.' },
+    { name: 'Usuarios', description: 'Consulta, actualización y eliminación de usuarios.' },
+    { name: 'Cuentas', description: 'Cuentas de plataformas asociadas a un usuario.' },
   ],
   paths: {
     '/salud': {
@@ -94,7 +109,7 @@ export const openapi = {
           '  `ana@uam.edu.co` son el mismo usuario.',
           '- El correo es único; un segundo registro con el mismo correo responde 409.',
           '- La clave nunca se almacena en claro: se cifra con bcrypt antes de llegar al repositorio.',
-          '- `rol` es opcional y por defecto es `SOLICITANTE`, el rol de la comunidad universitaria.',
+          '- `rol` es opcional y por defecto es `CLIENTE`.',
           '',
           '> Nota de alcance: la restricción R01 del documento de visión exige que a futuro las identidades',
           '> se resuelvan contra el directorio LDAP institucional. Este registro local es la implementación',
@@ -118,10 +133,10 @@ export const openapi = {
                   rol: {
                     type: 'string',
                     enum: ROLES,
-                    default: 'SOLICITANTE',
+                    default: 'CLIENTE',
                     description:
-                      'SOLICITANTE reporta; AGENTE atiende; COORDINADOR vigila SLA y reasigna; ADMINISTRADOR configura.',
-                    example: 'AGENTE',
+                      'CLIENTE solicita soporte; ASESOR atiende; ADMINISTRADOR configura y administra.',
+                    example: 'CLIENTE',
                   },
                 },
                 required: ['nombre', 'correo', 'clave'],
@@ -208,9 +223,141 @@ export const openapi = {
         },
       },
     },
+
+    '/usuarios': {
+      get: {
+        tags: ['Usuarios'],
+        summary: 'Listar usuarios',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'Usuarios registrados.',
+            content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/UsuarioDTO' } } } },
+          },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+
+    '/usuarios/{id}': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      get: {
+        tags: ['Usuarios'],
+        summary: 'Obtener usuario por id',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Usuario encontrado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/UsuarioDTO' } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Usuario no encontrado.', 'No existe un usuario con id ...'),
+        },
+      },
+      patch: {
+        tags: ['Usuarios'],
+        summary: 'Actualizar usuario',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ActualizarUsuarioDTO' },
+              example: { nombre: 'Nuevo nombre', activo: true },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Usuario actualizado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/UsuarioDTO' } } } },
+          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Usuario no encontrado.', 'No existe un usuario con id ...'),
+          409: respuestaError('El correo ya está registrado.', 'El correo ya está registrado'),
+        },
+      },
+      delete: {
+        tags: ['Usuarios'],
+        summary: 'Eliminar usuario',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          204: { description: 'Usuario eliminado.' },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Usuario no encontrado.', 'No existe un usuario con id ...'),
+        },
+      },
+    },
+
+    '/cuentas': {
+      post: {
+        tags: ['Cuentas'],
+        summary: 'Registrar una cuenta de plataforma',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/RegistrarCuentaDTO' },
+              example: { clienteId: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c', plataforma: 'Netflix', correoAcceso: 'cliente@correo.com' },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Cuenta creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
+          400: respuestaError('Datos inválidos.', 'plataforma requerida'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('El cliente no existe.', 'El cliente ... no existe'),
+        },
+      },
+      get: {
+        tags: ['Cuentas'],
+        summary: 'Listar cuentas de un cliente',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'clienteId', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          200: { description: 'Cuentas del cliente.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/CuentaDTO' } } } } },
+          400: respuestaError('Falta clienteId.', 'clienteId requerido'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+
+    '/cuentas/{id}': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      get: {
+        tags: ['Cuentas'],
+        summary: 'Obtener cuenta por id',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Cuenta encontrada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Cuenta no encontrada.', 'Cuenta no encontrada'),
+        },
+      },
+    },
   },
   components: {
-    schemas: { UsuarioDTO: usuario, SesionDTO: sesion, ErrorDTO: error },
+    schemas: {
+      UsuarioDTO: usuario,
+      SesionDTO: sesion,
+      ErrorDTO: error,
+      CuentaDTO: cuenta,
+      ActualizarUsuarioDTO: {
+        type: 'object',
+        properties: {
+          nombre: { type: 'string', minLength: 2 },
+          correo: { type: 'string', format: 'email' },
+          clave: { type: 'string', format: 'password', minLength: 8 },
+          rol: { type: 'string', enum: ROLES },
+          activo: { type: 'boolean' },
+        },
+      },
+      RegistrarCuentaDTO: {
+        type: 'object',
+        properties: {
+          clienteId: { type: 'string', format: 'uuid' },
+          plataforma: { type: 'string', minLength: 1 },
+          correoAcceso: { type: 'string', format: 'email' },
+        },
+        required: ['clienteId', 'plataforma', 'correoAcceso'],
+      },
+    },
     securitySchemes: {
       bearerAuth: {
         type: 'http',
