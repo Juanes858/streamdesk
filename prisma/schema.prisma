@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/infraestructura/persistencia/generado"
 }
 
 datasource db {
   provider = "postgresql"
+  // La URL de conexión para Prisma CLI se configura en prisma.config.ts.
 }
 
 enum Rol {
@@ -39,4 +40,5 @@ model Cuenta {
   correoAcceso String
   estado       EstadoCuenta @default(ACTIVA)
   creadoEn     DateTime     @default(now())
+}
 }

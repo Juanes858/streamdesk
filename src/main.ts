@@ -1,3 +1,4 @@
+import 'dotenv/config'
 // Raíz de composición: el único archivo que puede importarlo todo y hacer `new`
 // de implementaciones concretas.
 import { RegistrarUsuario } from './aplicacion/casos-uso/RegistrarUsuario'
@@ -23,4 +24,18 @@ const app = crearServidor({
 })
 
 const puerto = Number(process.env['PORT'] ?? 3000)
-app.listen(puerto, () => console.log(`HelpDesk UAM escuchando en http://localhost:${puerto}/api · docs en /api/docs`))
+
+async function main(): Promise<void> {
+  // Verifica la conexión y muestra los usuarios antes de iniciar el servidor HTTP.
+  const usuariosEnLaBase = await prisma.usuario.findMany()
+  console.log('Usuarios en la base de datos:', usuariosEnLaBase)
+
+  // El servidor solo se expone cuando la consulta de Prisma finalizó correctamente.
+  app.listen(puerto, () => console.log(`HelpDesk UAM escuchando en http://localhost:${puerto}/api · docs en /api/docs`))
+}
+
+// Un error de conexión impide arrancar la aplicación y deja el diagnóstico en consola.
+main().catch((error: unknown) => {
+  console.error('No se pudo consultar la base de datos:', error)
+  process.exitCode = 1
+})
