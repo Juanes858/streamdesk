@@ -4,12 +4,15 @@
 // - `...DTO`  → estructura de datos que cruza una frontera.
 // - Sin sufijo → contratos de comportamiento, que no son ni datos ni persistencia.
 
-import type { Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
+import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
 
 export interface UsuarioDAO {
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
+  listarTodos(): Promise<Usuario[]>
+  actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario>
+  eliminar(id: string): Promise<void>
 }
 
 export interface ServicioClaves {

@@ -1,6 +1,6 @@
 import type { PrismaClient } from './generado/client'
 import type { UsuarioModel as FilaUsuario } from './generado/models'
-import type { Rol, Usuario, UsuarioNuevo } from '../../dominio/modelo/Usuario'
+import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../../dominio/modelo/Usuario'
 import type { UsuarioDAO } from '../../dominio/puertos'
 
 const aDominio = (fila: FilaUsuario): Usuario => ({
@@ -27,5 +27,18 @@ export class UsuarioDAOPrisma implements UsuarioDAO {
   async porId(id: string): Promise<Usuario | null> {
     const fila = await this.prisma.usuario.findUnique({ where: { id } })
     return fila && aDominio(fila)
+  }
+
+  async listarTodos(): Promise<Usuario[]> {
+    const filas = await this.prisma.usuario.findMany()
+    return filas.map(aDominio)
+  }
+
+  async actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario> {
+    return aDominio(await this.prisma.usuario.update({ where: { id }, data: cambios }))
+  }
+
+  async eliminar(id: string): Promise<void> {
+    await this.prisma.usuario.delete({ where: { id } })
   }
 }

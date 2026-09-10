@@ -1,4 +1,4 @@
-export const ROLES = ['SOLICITANTE', 'AGENTE', 'COORDINADOR', 'ADMINISTRADOR'] as const
+export const ROLES = ['ADMINISTRADOR', 'ASESOR', 'CLIENTE'] as const
 
 export type Rol = (typeof ROLES)[number]
 
@@ -14,6 +14,9 @@ export interface Usuario {
 
 /** Un usuario que todavía no existe: el DAO asigna el id al guardarlo. */
 export type UsuarioNuevo = Omit<Usuario, 'id'>
+
+/** Cambios parciales para una actualización; todo opcional salvo el id, que va aparte. */
+export type CambiosUsuario = Partial<Omit<Usuario, 'id'>>
 
 /** Lo que sale hacia el exterior: el mismo usuario, nunca el hash de la clave. */
 export interface UsuarioDTO {
