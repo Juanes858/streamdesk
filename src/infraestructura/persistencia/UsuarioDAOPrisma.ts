@@ -1,5 +1,4 @@
-import type { PrismaClient } from './generado/client'
-import type { UsuarioModel as FilaUsuario } from './generado/models'
+import type { PrismaClient, Prisma, Usuario as FilaUsuario, $Enums } from './generado/index'
 import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../../dominio/modelo/Usuario'
 import type { UsuarioDAO } from '../../dominio/puertos'
 
@@ -16,7 +15,9 @@ export class UsuarioDAOPrisma implements UsuarioDAO {
   constructor(private readonly prisma: PrismaClient) {}
 
   async guardar(usuario: UsuarioNuevo): Promise<Usuario> {
-    return aDominio(await this.prisma.usuario.create({ data: usuario }))
+    return aDominio(await this.prisma.usuario.create({
+      data: { ...usuario, rol: usuario.rol as $Enums.Rol },
+    }))
   }
 
   async porCorreo(correo: string): Promise<Usuario | null> {
@@ -35,7 +36,10 @@ export class UsuarioDAOPrisma implements UsuarioDAO {
   }
 
   async actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario> {
-    return aDominio(await this.prisma.usuario.update({ where: { id }, data: cambios }))
+    return aDominio(await this.prisma.usuario.update({
+      where: { id },
+      data: cambios as unknown as Prisma.UsuarioUpdateInput,
+    }))
   }
 
   async eliminar(id: string): Promise<void> {

@@ -4,18 +4,26 @@ import swaggerUi from 'swagger-ui-express'
 import { openapi } from './openapi'
 import { rutasAutenticacion } from './rutas/autenticacion'
 import type { DependenciasAutenticacion } from './rutas/autenticacion'
+import { rutasCuentas } from './rutas/cuentas'
+import type { DependenciasCuentas } from './rutas/cuentas'
+import { rutasUsuarios } from './rutas/usuarios'
+import type { DependenciasUsuarios } from './rutas/usuarios'
 
 const errores: ErrorRequestHandler = (error, _req, res, _next) => {
   console.error(error)
   res.status(500).json({ error: 'Error interno' })
 }
 
-export function crearServidor(deps: DependenciasAutenticacion): Express {
+export interface DependenciasServidor extends DependenciasAutenticacion, DependenciasUsuarios, DependenciasCuentas {}
+
+export function crearServidor(deps: DependenciasServidor): Express {
   const api = Router()
   api.get('/salud', (_req, res) => void res.json({ estado: 'ok' }))
   api.get('/openapi.json', (_req, res) => void res.json(openapi))
   api.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi, { customSiteTitle: 'HelpDesk UAM · API' }))
   api.use('/auth', rutasAutenticacion(deps))
+  api.use('/usuarios', rutasUsuarios(deps))
+  api.use('/cuentas', rutasCuentas(deps))
 
   const app = express()
   app.use(express.json())

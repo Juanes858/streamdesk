@@ -27,6 +27,53 @@ npm run dev          # http://localhost:3001/api
 Documentación interactiva de la API: **http://localhost:3001/api/docs**
 (el contrato en crudo está en `/api/openapi.json`).
 
+### Configurar Swagger paso a paso
+
+Swagger ya está integrado en la capa HTTP mediante `swagger-ui-express`. La
+configuración se divide en dos piezas:
+
+1. **Definir el contrato** en `src/infraestructura/http/openapi.ts`. Allí se
+   describen la información de la API, los endpoints, cuerpos de entrada,
+   respuestas, esquemas y el esquema de seguridad JWT.
+2. **Publicar el contrato** en `src/infraestructura/http/servidor.ts`. El
+   servidor expone el JSON en `/api/openapi.json` y la interfaz interactiva en
+   `/api/docs`.
+
+Para configurar el proyecto desde cero:
+
+```bash
+npm install
+cp .env.example .env
+npm run db:up
+npm run db:migrate
+npm run dev
+```
+
+Después de iniciar el servidor, verifica la integración en este orden:
+
+1. Abre `http://localhost:3001/api/openapi.json`. Debe aparecer un documento
+   OpenAPI en formato JSON.
+2. Abre `http://localhost:3001/api/docs`. Debe aparecer Swagger UI con las
+   operaciones agrupadas por etiquetas.
+3. Ejecuta `GET /salud` desde Swagger con el servidor configurado como
+   `http://localhost:3001/api`.
+4. Ejecuta `POST /auth/registro` y registra un usuario.
+5. Ejecuta `POST /auth/login`, copia el campo `token` de la respuesta y pulsa
+   **Authorize** en Swagger. Introduce el token sin escribir `Bearer` si la
+   interfaz solicita únicamente el valor del token.
+6. Ejecuta `GET /auth/perfil`. Swagger enviará el token como
+   `Authorization: Bearer <token>` y la respuesta debe contener el usuario.
+
+Para agregar un endpoint nuevo, primero implementa la ruta en
+`src/infraestructura/http`, después agrega su descripción en `openapi.ts` bajo
+`paths` y finalmente define los esquemas reutilizables en `components.schemas`
+cuando corresponda. Mantén el prefijo `/api` en mente: OpenAPI usa rutas
+relativas como `/auth/login`, pero la URL completa es `/api/auth/login`.
+
+Si el puerto de `.env` es distinto de `3001`, reemplaza ese valor en la URL de
+Swagger y en el campo `servers` de `openapi.ts` cuando la API se publique detrás
+de un host o prefijo diferente.
+
 ## API
 
 Todo cuelga del prefijo `/api`.
@@ -38,8 +85,15 @@ Todo cuelga del prefijo `/api`.
 | `POST` | `/api/auth/registro` | `{ nombre, correo, clave, rol? }` → 201 con el usuario creado |
 | `POST` | `/api/auth/login` | `{ correo, clave }` → `{ token, usuario }` |
 | `GET` | `/api/auth/perfil` | Usuario de la sesión; requiere `Authorization: Bearer <token>` |
+| `GET` | `/api/usuarios` | Lista usuarios; requiere token |
+| `GET` | `/api/usuarios/:id` | Consulta un usuario; requiere token |
+| `PATCH` | `/api/usuarios/:id` | Actualiza datos de usuario; requiere token |
+| `DELETE` | `/api/usuarios/:id` | Elimina un usuario; requiere token |
+| `POST` | `/api/cuentas` | Registra una cuenta de plataforma; requiere token |
+| `GET` | `/api/cuentas?clienteId=:id` | Lista cuentas de un cliente; requiere token |
+| `GET` | `/api/cuentas/:id` | Consulta una cuenta; requiere token |
 
-Roles: `SOLICITANTE` (por defecto), `AGENTE`, `COORDINADOR`, `ADMINISTRADOR`.
+Roles: `CLIENTE` (por defecto), `ASESOR`, `ADMINISTRADOR`.
 El token es un JWT HS256 con vigencia de 8 horas.
 
 ---

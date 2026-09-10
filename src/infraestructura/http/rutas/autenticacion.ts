@@ -21,7 +21,7 @@ function validarRegistro(cuerpo: unknown): RegistroDTO | string {
   if (typeof d['nombre'] !== 'string' || d['nombre'].trim().length < 2) return 'nombre requerido (mínimo 2 caracteres)'
   if (typeof d['correo'] !== 'string' || !CORREO.test(d['correo'].trim())) return 'correo inválido'
   if (typeof d['clave'] !== 'string' || d['clave'].length < 8) return 'clave requerida (mínimo 8 caracteres)'
-  const rol: unknown = d['rol'] ?? 'SOLICITANTE'
+  const rol: unknown = d['rol'] ?? 'CLIENTE'
   if (!esRol(rol)) return 'rol inválido'
   return { nombre: d['nombre'], correo: d['correo'], clave: d['clave'], rol: rol satisfies Rol }
 }
