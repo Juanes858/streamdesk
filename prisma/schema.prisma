@@ -23,4 +23,22 @@ model Usuario {
   rol       Rol      @default(SOLICITANTE)
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
+  cuentas Cuenta[]
+}
+
+enum EstadoCuenta {
+  ACTIVA
+  SUSPENDIDA
+  CANCELADA
+}
+
+model Cuenta {
+  id           String       @id @default(uuid())
+  clienteId    String
+  cliente      Usuario      @relation(fields: [clienteId], references: [id])
+  plataforma   String
+  correoAcceso String
+  estado       EstadoCuenta @default(ACTIVA)
+  creadoEn     DateTime     @default(now())
+}
 }
