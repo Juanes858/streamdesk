@@ -4,10 +4,12 @@
 // - `...DTO`  → estructura de datos que cruza una frontera.
 // - Sin sufijo → contratos de comportamiento, que no son ni datos ni persistencia.
 
-import type { Cuenta, CuentaNueva } from '../modelo/Cuenta'
+import type { Cuenta, CuentaNueva, EstadoCuenta } from '../modelo/Cuenta'
+import type { EstadoTicket, Prioridad, Ticket, TicketNuevo } from '../modelo/Ticket'
 import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
 
 export interface UsuarioDAO {
+  // Estos contratos permiten probar los casos de uso sin Express, Prisma o BD.
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
@@ -33,7 +35,38 @@ export interface ServicioTokens {
 }
 
 export interface CuentaDAO {
+  // La aplicación depende de este contrato, no de CuentaDAOPrisma.
   guardar(cuenta: CuentaNueva): Promise<Cuenta>
   porId(id: string): Promise<Cuenta | null>
-  porCliente(clienteId: string): Promise<Cuenta[]>
+  porUsuario(usuarioId: string): Promise<Cuenta[]>
+  actualizar(id: string, cambios: CambiosCuenta): Promise<Cuenta>
+  eliminar(id: string): Promise<void>
 }
+
+export type CambiosCuenta = Partial<{
+  usuarioId: string
+  plataformaId: string
+  correo: string
+  claveHash: string
+  fechaInicio: Date
+  fechaFin: Date
+  estado: EstadoCuenta
+}>
+
+export interface TicketDAO {
+  // El DAO encapsula persistencia; los filtros expresan reglas del negocio.
+  guardar(ticket: TicketNuevo): Promise<Ticket>
+  porId(id: string): Promise<Ticket | null>
+  listar(filtros?: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket }): Promise<Ticket[]>
+  actualizar(id: string, cambios: Partial<Omit<Ticket, 'id'>>): Promise<Ticket>
+  eliminar(id: string): Promise<void>
+}
+
+export type CambiosTicket = Partial<{
+  usuarioId: string
+  asesorId: string | null
+  cuentaId: string
+  descripcion: string
+  estado: EstadoTicket
+  prioridad: Prioridad
+}>

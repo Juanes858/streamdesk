@@ -1,35 +1,42 @@
 import type { Cuenta } from '../../dominio/modelo/Cuenta'
-import type { CuentaDAO, UsuarioDAO } from '../../dominio/puertos'
+import type { ServicioClaves, CuentaDAO, UsuarioDAO } from '../../dominio/puertos'
 
-export class ClienteNoExiste extends Error {
-  constructor(clienteId: string) {
-    super(`El cliente ${clienteId} no existe`)
+export class UsuarioCuentaNoExiste extends Error {
+  constructor(usuarioId: string) {
+    super(`El usuario ${usuarioId} no existe`)
   }
 }
 
 /** Datos de entrada, ya validados en la frontera HTTP. */
 export interface RegistroCuentaDTO {
-  clienteId: string
-  plataforma: string
-  correoAcceso: string
+  usuarioId: string
+  plataformaId: string
+  correo: string
+  clave: string
+  fechaInicio: Date
+  fechaFin: Date
 }
 
 export class RegistrarCuenta {
   constructor(
     private readonly cuentas: CuentaDAO,
     private readonly usuarios: UsuarioDAO,
+    private readonly claves: ServicioClaves,
   ) {}
 
   async ejecutar(datos: RegistroCuentaDTO): Promise<Cuenta> {
-    // Se valida contra Usuario porque en este proyecto el "cliente"
-    // es simplemente un Usuario con rol SOLICITANTE, no una entidad aparte.
-    const cliente = await this.usuarios.porId(datos.clienteId)
-    if (!cliente) throw new ClienteNoExiste(datos.clienteId)
+    // Cuenta pertenece a un Usuario; no existe una entidad Cliente separada.
+    // La clave de acceso se cifra antes de guardarla y nunca sale por HTTP.
+    const usuario = await this.usuarios.porId(datos.usuarioId)
+    if (!usuario) throw new UsuarioCuentaNoExiste(datos.usuarioId)
 
     return this.cuentas.guardar({
-      clienteId: datos.clienteId,
-      plataforma: datos.plataforma.trim(),
-      correoAcceso: datos.correoAcceso.trim().toLowerCase(),
+      usuarioId: datos.usuarioId,
+      plataformaId: datos.plataformaId.trim(),
+      correo: datos.correo.trim().toLowerCase(),
+      claveHash: await this.claves.cifrar(datos.clave),
+      fechaInicio: datos.fechaInicio,
+      fechaFin: datos.fechaFin,
       estado: 'ACTIVA',
     })
   }

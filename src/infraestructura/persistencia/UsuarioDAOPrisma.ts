@@ -15,6 +15,7 @@ export class UsuarioDAOPrisma implements UsuarioDAO {
   constructor(private readonly prisma: PrismaClient) {}
 
   async guardar(usuario: UsuarioNuevo): Promise<Usuario> {
+    // Prisma usa enums propios; el adaptador traduce entre Prisma y dominio.
     return aDominio(await this.prisma.usuario.create({
       data: { ...usuario, rol: usuario.rol as $Enums.Rol },
     }))

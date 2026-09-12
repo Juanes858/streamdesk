@@ -22,6 +22,8 @@ export class RegistrarUsuario {
   ) {}
 
   async ejecutar(datos: RegistroDTO): Promise<Usuario> {
+    // La aplicación normaliza el correo y cifra la clave antes de cruzar al DAO.
+    // Así ningún adaptador de persistencia recibe una contraseña en texto plano.
     const correo = datos.correo.trim().toLowerCase()
     if (await this.usuarios.porCorreo(correo)) throw new CorreoYaRegistrado(correo)
 

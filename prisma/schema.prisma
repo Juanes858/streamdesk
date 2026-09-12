@@ -23,20 +23,54 @@ model Usuario {
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
   cuentas Cuenta[]
+  ticketsComoUsuario Ticket[] @relation("TicketUsuario")
+  ticketsComoAsesor Ticket[] @relation("TicketAsesor")
 }
 
 enum EstadoCuenta {
   ACTIVA
-  SUSPENDIDA
-  CANCELADA
+  REPORTADA
+  VENCIDA
 }
 
 model Cuenta {
   id           String       @id @default(uuid())
-  clienteId    String
-  cliente      Usuario      @relation(fields: [clienteId], references: [id])
-  plataforma   String
-  correoAcceso String
+  usuarioId    String
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
+  plataformaId String
+  correo       String
+  claveHash    String
+  fechaInicio  DateTime
+  fechaFin     DateTime
   estado       EstadoCuenta @default(ACTIVA)
-  creadoEn     DateTime     @default(now())
+  tickets      Ticket[]
+}
+
+enum EstadoTicket {
+  NUEVO
+  ASIGNADO
+  EN_PROCESO
+  ESPERA_INFORMACION
+  RESUELTO
+  CERRADO
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Ticket {
+  id            String       @id @default(uuid())
+  usuarioId     String
+  usuario       Usuario      @relation("TicketUsuario", fields: [usuarioId], references: [id], onDelete: Restrict)
+  asesorId      String?
+  asesor        Usuario?     @relation("TicketAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
+  cuentaId      String
+  cuenta        Cuenta       @relation(fields: [cuentaId], references: [id], onDelete: Restrict)
+  descripcion   String
+  estado        EstadoTicket @default(NUEVO)
+  prioridad     Prioridad    @default(MEDIA)
 }

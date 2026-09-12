@@ -6,7 +6,7 @@ import { ObtenerUsuario, UsuarioNoEncontrado } from '../../../aplicacion/casos-u
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
 import { esRol } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
-import { exigirSesion } from './autenticacion'
+import { exigirRoles } from './autenticacion'
 
 export interface DependenciasUsuarios {
   usuarios: UsuarioDAO
@@ -46,7 +46,8 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
 
 export function rutasUsuarios(deps: DependenciasUsuarios): Router {
   const rutas = Router()
-  const sesion = exigirSesion(deps.tokens)
+  // Todo el router de administración de usuarios queda reservado al admin.
+  const sesion = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
   rutas.get('/', sesion, async (_req, res, next) => {
     try {

@@ -9,8 +9,8 @@ Manizales. Node.js + TypeScript estricto, Express, Prisma y PostgreSQL.
 > producto convierte el escalamiento en una regla del sistema y no en un acto de
 > memoria de una persona. Ver `docs/vision-helpdesk-uam.md`.
 
-Estado actual: **autenticación y registro de usuarios** (F19, F20). Sobre esa
-base entran después tickets, catálogo de SLA y escalamiento automático.
+Estado actual: **autenticación, usuarios, cuentas de plataformas y tickets**.
+El catálogo de SLA y el escalamiento automático todavía son capacidades futuras.
 
 ---
 
@@ -57,12 +57,20 @@ Después de iniciar el servidor, verifica la integración en este orden:
    operaciones agrupadas por etiquetas.
 3. Ejecuta `GET /salud` desde Swagger con el servidor configurado como
    `http://localhost:3001/api`.
-4. Ejecuta `POST /auth/registro` y registra un usuario.
-5. Ejecuta `POST /auth/login`, copia el campo `token` de la respuesta y pulsa
+4. Inicia sesión con el administrador inicial (`admin@uam.edu.co` /
+   `Admin12345!`) o con un administrador existente.
+5. Ejecuta `POST /auth/registro` para crear un usuario. Esta operación requiere
+   una sesión con rol `ADMINISTRADOR`.
+6. Ejecuta `POST /auth/login`, copia el campo `token` de la respuesta y pulsa
    **Authorize** en Swagger. Introduce el token sin escribir `Bearer` si la
    interfaz solicita únicamente el valor del token.
-6. Ejecuta `GET /auth/perfil`. Swagger enviará el token como
+7. Ejecuta `GET /auth/perfil`. Swagger enviará el token como
    `Authorization: Bearer <token>` y la respuesta debe contener el usuario.
+
+Al iniciar la aplicación se crea automáticamente un administrador si no existe
+el correo configurado en `ADMIN_CORREO`. Por defecto es
+`admin@uam.edu.co` con clave `Admin12345!`. Cambia estos valores en `.env` antes
+de usar el sistema fuera del entorno local.
 
 Para agregar un endpoint nuevo, primero implementa la ruta en
 `src/infraestructura/http`, después agrega su descripción en `openapi.ts` bajo
@@ -82,19 +90,32 @@ Todo cuelga del prefijo `/api`.
 |---|---|---|
 | `GET` | `/api/salud` | Verificación de vida, sin tocar la base de datos |
 | `GET` | `/api/docs` | Swagger UI con la explicación de cada endpoint |
-| `POST` | `/api/auth/registro` | `{ nombre, correo, clave, rol? }` → 201 con el usuario creado |
+| `POST` | `/api/auth/registro` | `{ nombre, correo, clave, rol? }` → 201; requiere sesión de administrador |
 | `POST` | `/api/auth/login` | `{ correo, clave }` → `{ token, usuario }` |
 | `GET` | `/api/auth/perfil` | Usuario de la sesión; requiere `Authorization: Bearer <token>` |
-| `GET` | `/api/usuarios` | Lista usuarios; requiere token |
-| `GET` | `/api/usuarios/:id` | Consulta un usuario; requiere token |
-| `PATCH` | `/api/usuarios/:id` | Actualiza datos de usuario; requiere token |
-| `DELETE` | `/api/usuarios/:id` | Elimina un usuario; requiere token |
-| `POST` | `/api/cuentas` | Registra una cuenta de plataforma; requiere token |
-| `GET` | `/api/cuentas?clienteId=:id` | Lista cuentas de un cliente; requiere token |
+| `GET` | `/api/usuarios` | Lista usuarios; requiere admin |
+| `GET` | `/api/usuarios/:id` | Consulta un usuario; requiere admin |
+| `PATCH` | `/api/usuarios/:id` | Actualiza datos de usuario; requiere admin |
+| `DELETE` | `/api/usuarios/:id` | Elimina un usuario; requiere admin |
+| `POST` | `/api/cuentas` | Registra una cuenta de plataforma; requiere admin |
+| `GET` | `/api/cuentas?usuarioId=:id` | Lista cuentas de un usuario; requiere token |
 | `GET` | `/api/cuentas/:id` | Consulta una cuenta; requiere token |
+| `PATCH` | `/api/cuentas/:id` | Actualiza una cuenta; requiere admin |
+| `DELETE` | `/api/cuentas/:id` | Elimina una cuenta; requiere admin |
+| `POST` | `/api/tickets` | Crea un ticket; requiere token |
+| `GET` | `/api/tickets?estado=NUEVO` | Lista tickets, con filtros opcionales; requiere token |
+| `GET` | `/api/tickets/:id` | Consulta un ticket; requiere token |
+| `PATCH` | `/api/tickets/:id` | Actualiza asesor, cuenta, prioridad, estado o descripción; requiere admin/asesor |
+| `DELETE` | `/api/tickets/:id` | Elimina un ticket; requiere admin/asesor |
 
 Roles: `CLIENTE` (por defecto), `ASESOR`, `ADMINISTRADOR`.
 El token es un JWT HS256 con vigencia de 8 horas.
+
+Permisos actuales:
+
+- `ADMINISTRADOR`: crea y gestiona usuarios, cuentas y tickets.
+- `ASESOR`: consulta sus tickets asignados y puede actualizarlos o eliminarlos.
+- `CLIENTE`: inicia sesión, consulta su perfil, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
 
 ---
 
@@ -103,14 +124,14 @@ El token es un JWT HS256 con vigencia de 8 horas.
 ```
 src/
 ├── dominio/              El negocio. No importa nada de afuera.
-│   ├── modelo/           Usuario · UsuarioDTO · Rol · Ticket
-│   └── puertos/          UsuarioDAO · ServicioClaves · ServicioTokens
+│   ├── modelo/           Usuario · Cuenta · Ticket · DTOs y estados
+│   └── puertos/          DAOs · ServicioClaves · ServicioTokens
 │
 ├── aplicacion/
-│   └── casos-uso/        RegistrarUsuario · IniciarSesion
+│   └── casos-uso/        Casos de usuario, cuenta y ticket
 │
 ├── infraestructura/      Todo lo que se puede cambiar sin cambiar el negocio.
-│   ├── persistencia/     UsuarioDAOPrisma · cliente de Prisma
+│   ├── persistencia/     DAOs Prisma · cliente de Prisma
 │   ├── seguridad/        ClavesBcrypt · TokensJwt
 │   └── http/             servidor.ts · openapi.ts · rutas/
 │
@@ -130,6 +151,18 @@ infraestructura ──▶ aplicacion ──▶ dominio
                                      ▲
       (implementa los puertos que el dominio declara)
 ```
+
+### Paso a paso de una petición de Ticket
+
+1. El cliente envía una petición a `/api/tickets` con su JWT y JSON.
+2. `servidor.ts` monta `rutasTickets`; `exigirSesion` valida el token antes de ejecutar la operación.
+3. `tickets.ts` valida el JSON como dato de frontera y convierte los valores a los tipos del dominio.
+4. Un caso de uso (`CrearTicket`, `ListarTickets`, `ObtenerTicket`, `ActualizarTicket` o `EliminarTicket`) aplica la operación y sus reglas, sin conocer Express ni Prisma.
+5. El caso de uso llama al puerto `TicketDAO`, declarado en `dominio/puertos`.
+6. `TicketDAOPrisma` traduce ese puerto a consultas Prisma y convierte las filas a la entidad `Ticket`.
+7. `main.ts` conecta las interfaces con implementaciones concretas. Es la raíz de composición y el único lugar que instancia Prisma, DAOs, seguridad y casos de uso.
+
+Para cambiar una regla de negocio, empieza por `dominio/` o `aplicacion/casos-uso/`. Para cambiar PostgreSQL o Prisma, cambia `infraestructura/persistencia/`. Para cambiar el formato HTTP, cambia `infraestructura/http/rutas/` y su entrada correspondiente en `openapi.ts`.
 
 `dominio/` declara **qué necesita** en forma de interfaces (`puertos/`), con el
 vocabulario del negocio: `guardar`, `porCorreo`, `cifrar`, `emitir`. Nunca
@@ -168,7 +201,7 @@ base de datos o de proveedor de correo.
 
 ### Qué compra en la práctica
 
-- **Pruebas rápidas.** `npm test` corre los casos de uso contra un repositorio en memoria y un hash falso: sin Docker, sin red, en milisegundos. La suite del dominio no espera a PostgreSQL.
+- **Pruebas rápidas.** El proyecto está preparado para pruebas unitarias de casos de uso contra repositorios en memoria y hashes falsos. Actualmente no hay archivos de prueba versionados; agrega la suite antes de depender de `npm test` como puerta de calidad.
 - **Cambiar de tecnología sin tocar el negocio.** Sustituir Prisma por otro ORM, o bcrypt/JWT por el directorio LDAP institucional que exige R01, es escribir un adaptador nuevo en `infraestructura/` y cambiar una línea de `main.ts`. `dominio/` y `aplicacion/` no se enteran.
 - **Un lugar obvio para cada cosa.** Una regla de negocio va a `dominio/`; una decisión de orquestación, a `aplicacion/casos-uso/`; un detalle de HTTP, SQL o correo, a `infraestructura/`. Cuando entren los patrones del corte 3 (Strategy para la política de asignación, Adapter para LDAP y SMTP, State para el ciclo de vida del ticket) ya hay dónde ponerlos.
 
@@ -216,6 +249,48 @@ que lo exponga, no antes.
 | `npm run db:migrate` | Crear y aplicar migraciones |
 | `npm run db:studio` | Explorador visual de los datos |
 | `npm run arquitectura` | Verificar que el dominio no importa infraestructura |
+
+### Preparar un commit
+
+Antes de crear el commit, ejecuta:
+
+```bash
+git diff --check
+npm run build
+npm run arquitectura
+npx prisma validate
+npx prisma migrate status
+```
+
+Revisa el resultado y confirma que `.env` no aparece en `git status`:
+
+```bash
+git status --short
+git diff --stat
+git diff
+```
+
+El archivo `.env.example` contiene valores de desarrollo para documentar la
+configuración, pero `.env` debe permanecer sin versionar. Cambia `JWT_SECRET`,
+`ADMIN_CLAVE` y `DATABASE_URL` antes de cualquier entorno compartido.
+
+Después puedes crear el commit y subir la rama:
+
+```bash
+git add .
+git commit -m "feat: completar API de usuarios cuentas y tickets"
+git push origin feature/creacion-endpoints
+```
+
+Para integrar la rama en `main`, usa un pull request o, si el flujo del equipo
+lo permite:
+
+```bash
+git checkout main
+git pull origin main
+git merge feature/creacion-endpoints
+git push origin main
+```
 
 ## Configuración
 
