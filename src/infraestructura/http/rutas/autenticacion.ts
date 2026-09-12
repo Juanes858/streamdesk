@@ -39,20 +39,39 @@ export interface DependenciasAutenticacion {
   usuarios: UsuarioDAO
 }
 
+function leerToken(authorization: string | undefined): string {
+  const valor = authorization?.trim() ?? ''
+  return valor.replace(/^Bearer\s+/i, '').trim()
+}
+
 /** Exige un token válido y deja la credencial en `res.locals.credencial`. */
 export function exigirSesion(tokens: ServicioTokens): RequestHandler {
   return (req, res, next) => {
-    const credencial = tokens.verificar((req.headers.authorization ?? '').replace(/^Bearer /, ''))
+    const credencial = tokens.verificar(leerToken(req.headers.authorization))
     if (!credencial) return void res.status(401).json({ error: 'Sesión requerida' })
     res.locals['credencial'] = credencial
     next()
   }
 }
 
+/** Exige sesión y uno de los roles indicados. */
+export function exigirRoles(tokens: ServicioTokens, ...roles: Rol[]): RequestHandler {
+  const sesion = exigirSesion(tokens)
+  return (req, res, next) => {
+    sesion(req, res, () => {
+      const credencial = res.locals['credencial'] as CredencialDTO
+      if (!roles.includes(credencial.rol)) return void res.status(403).json({ error: 'Permisos insuficientes' })
+      next()
+    })
+  }
+}
+
 export function rutasAutenticacion(deps: DependenciasAutenticacion): Router {
   const rutas = Router()
 
-  rutas.post('/registro', async (req, res, next) => {
+  // Crear usuarios es una operación administrativa; login y perfil son los
+  // únicos puntos de autenticación disponibles para cualquier usuario.
+  rutas.post('/registro', exigirRoles(deps.tokens, 'ADMINISTRADOR'), async (req, res, next) => {
     const datos = validarRegistro(req.body)
     if (typeof datos === 'string') return void res.status(400).json({ error: datos })
     try {
@@ -75,6 +94,8 @@ export function rutasAutenticacion(deps: DependenciasAutenticacion): Router {
   })
 
   rutas.get('/perfil', exigirSesion(deps.tokens), async (req, res, next) => {
+    // El token solo identifica al usuario; el perfil se vuelve a leer de la
+    // BD para reflejar cambios de rol o desactivación inmediatamente.
     try {
       const { id } = res.locals['credencial'] as CredencialDTO
       const usuario = await deps.usuarios.porId(id)

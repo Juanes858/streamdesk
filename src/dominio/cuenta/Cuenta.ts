@@ -1,14 +1,16 @@
 export class Cuenta {
   constructor(
     public readonly id: string,
-    public readonly clienteId: string,
-    public readonly plataforma: string, // ej: "Netflix", "Disney+"
-    public readonly correoAcceso: string,
-    public readonly estado: 'ACTIVA' | 'DISPONIBLE' | 'REPORTADA' | 'VENCIDA', // agg estados o organizar, activa, disponible, reportada, vencida
-    public readonly fechaCreacion: Date
+    public readonly usuarioId: string,
+    public readonly plataformaId: string,
+    public readonly correo: string,
+    public readonly claveHash: string,
+    public readonly fechaInicio: Date,
+    public readonly fechaFin: Date,
+    public readonly estado: 'ACTIVA' | 'REPORTADA' | 'VENCIDA'
   ) {}
 
   puedeSerAsignada(): boolean {
-    return this.estado === 'DISPONIBLE';
+    return this.estado === 'ACTIVA';
   }
 }

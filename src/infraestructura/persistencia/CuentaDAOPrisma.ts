@@ -1,15 +1,17 @@
 import type { PrismaClient, Cuenta as FilaCuenta, Prisma, $Enums } from './generado/index'
 import type { Cuenta, CuentaNueva, EstadoCuenta } from '../../dominio/modelo/Cuenta'
-import type { CuentaDAO } from '../../dominio/puertos'
+import type { CambiosCuenta, CuentaDAO } from '../../dominio/puertos'
 
 // Traduce la fila cruda de la base de datos al tipo del dominio.
 const aDominio = (fila: FilaCuenta): Cuenta => ({
   id: fila.id,
-  clienteId: fila.clienteId,
-  plataforma: fila.plataforma,
-  correoAcceso: fila.correoAcceso,
+  usuarioId: fila.usuarioId,
+  plataformaId: fila.plataformaId,
+  correo: fila.correo,
+  claveHash: fila.claveHash,
+  fechaInicio: fila.fechaInicio,
+  fechaFin: fila.fechaFin,
   estado: fila.estado as EstadoCuenta,
-  creadoEn: fila.creadoEn,
 })
 
 export class CuentaDAOPrisma implements CuentaDAO {
@@ -26,8 +28,24 @@ export class CuentaDAOPrisma implements CuentaDAO {
     return fila && aDominio(fila)
   }
 
-  async porCliente(clienteId: string): Promise<Cuenta[]> {
-    const filas = await this.prisma.cuenta.findMany({ where: { clienteId } })
+  async porUsuario(usuarioId: string): Promise<Cuenta[]> {
+    const filas = await this.prisma.cuenta.findMany({ where: { usuarioId } })
     return filas.map(aDominio)
+  }
+
+  async actualizar(id: string, cambios: CambiosCuenta): Promise<Cuenta> {
+    // El hash puede cambiar, pero el DTO público siempre lo elimina mediante
+    // aCuentaDTO antes de entregar la respuesta HTTP.
+    return aDominio(await this.prisma.cuenta.update({
+      where: { id },
+      data: {
+        ...cambios,
+        ...(cambios.estado !== undefined && { estado: cambios.estado as $Enums.EstadoCuenta }),
+      } as Prisma.CuentaUpdateInput,
+    }))
+  }
+
+  async eliminar(id: string): Promise<void> {
+    await this.prisma.cuenta.delete({ where: { id } })
   }
 }

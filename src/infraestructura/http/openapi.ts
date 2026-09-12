@@ -1,4 +1,5 @@
 import { ROLES } from '../../dominio/modelo/Usuario'
+import { ESTADOS_TICKET, PRIORIDADES_TICKET } from '../../dominio/modelo/Ticket'
 
 const usuario = {
   type: 'object',
@@ -35,13 +36,28 @@ const cuenta = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    clienteId: { type: 'string', format: 'uuid' },
-    plataforma: { type: 'string', example: 'Netflix' },
-    correoAcceso: { type: 'string', format: 'email', example: 'cliente@correo.com' },
-    estado: { type: 'string', enum: ['ACTIVA', 'SUSPENDIDA', 'CANCELADA'], example: 'ACTIVA' },
-    creadoEn: { type: 'string', format: 'date-time' },
+    usuarioId: { type: 'string', format: 'uuid' },
+    plataformaId: { type: 'string', example: 'NETFLIX' },
+    correo: { type: 'string', format: 'email', example: 'cliente@correo.com' },
+    fechaInicio: { type: 'string', format: 'date-time' },
+    fechaFin: { type: 'string', format: 'date-time' },
+    estado: { type: 'string', enum: ['ACTIVA', 'REPORTADA', 'VENCIDA'], example: 'ACTIVA' },
   },
-  required: ['id', 'clienteId', 'plataforma', 'correoAcceso', 'estado', 'creadoEn'],
+  required: ['id', 'usuarioId', 'plataformaId', 'correo', 'fechaInicio', 'fechaFin', 'estado'],
+}
+
+const ticket = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    descripcion: { type: 'string', example: 'La contraseña dejó de funcionar.' },
+    estado: { type: 'string', enum: ESTADOS_TICKET },
+    prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
+    usuarioId: { type: 'string', format: 'uuid' },
+    asesorId: { type: 'string', format: 'uuid', nullable: true },
+    cuentaId: { type: 'string', format: 'uuid' },
+  },
+  required: ['id', 'usuarioId', 'asesorId', 'cuentaId', 'descripcion', 'estado', 'prioridad'],
 }
 
 const respuestaError = (description: string, ejemplo: string) => ({
@@ -57,9 +73,7 @@ export const openapi = {
     description: [
       'API del sistema de gestión de tickets de soporte de la Universidad Autónoma de Manizales.',
       '',
-      'Cubre por ahora la **autenticación y el registro de usuarios** (características F19 y F20 del',
-      'documento de visión): quién entra al sistema y con qué rol. Las capacidades de tickets, SLA y',
-      'escalamiento se agregarán sobre esta misma base.',
+      'Cubre autenticación, usuarios, cuentas de plataformas y el ciclo de vida básico de tickets.',
       '',
       '**Cómo probar desde aquí**: registra un usuario en `POST /api/auth/registro`, inicia sesión en',
       '`POST /api/auth/login`, copia el `token` de la respuesta y pégalo en el botón **Authorize** de',
@@ -77,6 +91,7 @@ export const openapi = {
     { name: 'Autenticación', description: 'Registro de usuarios, inicio de sesión y consulta del perfil propio.' },
     { name: 'Usuarios', description: 'Consulta, actualización y eliminación de usuarios.' },
     { name: 'Cuentas', description: 'Cuentas de plataformas asociadas a un usuario.' },
+    { name: 'Tickets', description: 'Registro y seguimiento de solicitudes de soporte.' },
   ],
   paths: {
     '/salud': {
@@ -99,6 +114,7 @@ export const openapi = {
       post: {
         tags: ['Autenticación'],
         summary: 'Registrar un usuario',
+        security: [{ bearerAuth: [] }],
         description: [
           'Crea un usuario y devuelve sus datos públicos. **No inicia sesión**: para obtener un token hay',
           'que llamar después a `/auth/login`.',
@@ -229,6 +245,7 @@ export const openapi = {
         tags: ['Usuarios'],
         summary: 'Listar usuarios',
         security: [{ bearerAuth: [] }],
+        description: 'Solo un usuario con rol ADMINISTRADOR puede listar usuarios.',
         responses: {
           200: {
             description: 'Usuarios registrados.',
@@ -294,13 +311,13 @@ export const openapi = {
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/RegistrarCuentaDTO' },
-              example: { clienteId: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c', plataforma: 'Netflix', correoAcceso: 'cliente@correo.com' },
+              example: { usuarioId: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c', plataformaId: 'NETFLIX', correo: 'cliente@correo.com', clave: 'clave-segura', fechaInicio: '2026-09-12T00:00:00.000Z', fechaFin: '2027-09-12T00:00:00.000Z' },
             },
           },
         },
         responses: {
           201: { description: 'Cuenta creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
-          400: respuestaError('Datos inválidos.', 'plataforma requerida'),
+          400: respuestaError('Datos inválidos.', 'clave requerida (mínimo 8 caracteres)'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('El cliente no existe.', 'El cliente ... no existe'),
         },
@@ -309,10 +326,10 @@ export const openapi = {
         tags: ['Cuentas'],
         summary: 'Listar cuentas de un cliente',
         security: [{ bearerAuth: [] }],
-        parameters: [{ name: 'clienteId', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [{ name: 'usuarioId', in: 'query', required: false, schema: { type: 'string', format: 'uuid' }, description: 'Opcional para ADMINISTRADOR; los demás usuarios consultan su propia cuenta.' }],
         responses: {
           200: { description: 'Cuentas del cliente.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/CuentaDTO' } } } } },
-          400: respuestaError('Falta clienteId.', 'clienteId requerido'),
+          400: respuestaError('Falta usuarioId.', 'usuarioId requerido'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
         },
       },
@@ -330,6 +347,108 @@ export const openapi = {
           404: respuestaError('Cuenta no encontrada.', 'Cuenta no encontrada'),
         },
       },
+      patch: {
+        tags: ['Cuentas'],
+        summary: 'Actualizar una cuenta de plataforma',
+        description: 'Solo un administrador puede actualizar una cuenta.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarCuentaDTO' } } },
+        },
+        responses: {
+          200: { description: 'Cuenta actualizada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
+          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+          404: respuestaError('Cuenta no encontrada.', 'No existe la cuenta ...'),
+        },
+      },
+      delete: {
+        tags: ['Cuentas'],
+        summary: 'Eliminar una cuenta de plataforma',
+        description: 'Solo un administrador puede eliminar una cuenta.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          204: { description: 'Cuenta eliminada.' },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+          404: respuestaError('Cuenta no encontrada.', 'No existe la cuenta ...'),
+        },
+      },
+    },
+
+    '/tickets': {
+      post: {
+        tags: ['Tickets'],
+        summary: 'Crear un ticket',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CrearTicketDTO' } } },
+        },
+        responses: {
+          201: { description: 'Ticket creado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
+          400: respuestaError('Datos inválidos.', 'descripcion requerida'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('El usuario, asesor o cuenta no existe.', 'No existe la cuenta ...'),
+        },
+      },
+      get: {
+        tags: ['Tickets'],
+        summary: 'Listar tickets',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'usuarioId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'asesorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'cuentaId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'estado', in: 'query', schema: { type: 'string', enum: ESTADOS_TICKET } },
+        ],
+        responses: {
+          200: { description: 'Tickets encontrados.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },
+          400: respuestaError('Filtro de estado inválido.', 'estado inválido'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+
+    '/tickets/{id}': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      get: {
+        tags: ['Tickets'],
+        summary: 'Obtener ticket por id',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Ticket encontrado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Ticket no encontrado.', 'No existe un ticket con id ...'),
+        },
+      },
+      patch: {
+        tags: ['Tickets'],
+        summary: 'Actualizar ticket',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarTicketDTO' } } },
+        },
+        responses: {
+          200: { description: 'Ticket actualizado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
+          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Ticket, asesor o cuenta no encontrado.', 'No existe la cuenta ...'),
+        },
+      },
+      delete: {
+        tags: ['Tickets'],
+        summary: 'Eliminar ticket',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          204: { description: 'Ticket eliminado.' },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Ticket no encontrado.', 'No existe un ticket con id ...'),
+        },
+      },
     },
   },
   components: {
@@ -338,6 +457,7 @@ export const openapi = {
       SesionDTO: sesion,
       ErrorDTO: error,
       CuentaDTO: cuenta,
+      TicketDTO: ticket,
       ActualizarUsuarioDTO: {
         type: 'object',
         properties: {
@@ -351,11 +471,46 @@ export const openapi = {
       RegistrarCuentaDTO: {
         type: 'object',
         properties: {
-          clienteId: { type: 'string', format: 'uuid' },
-          plataforma: { type: 'string', minLength: 1 },
-          correoAcceso: { type: 'string', format: 'email' },
+          usuarioId: { type: 'string', format: 'uuid' },
+          plataformaId: { type: 'string', minLength: 1 },
+          correo: { type: 'string', format: 'email' },
+          clave: { type: 'string', format: 'password', minLength: 8 },
+          fechaInicio: { type: 'string', format: 'date-time' },
+          fechaFin: { type: 'string', format: 'date-time' },
         },
-        required: ['clienteId', 'plataforma', 'correoAcceso'],
+        required: ['usuarioId', 'plataformaId', 'correo', 'clave', 'fechaInicio', 'fechaFin'],
+      },
+      ActualizarCuentaDTO: {
+        type: 'object',
+        properties: {
+          plataformaId: { type: 'string', minLength: 1 },
+          correo: { type: 'string', format: 'email' },
+          clave: { type: 'string', format: 'password', minLength: 8 },
+          fechaInicio: { type: 'string', format: 'date-time' },
+          fechaFin: { type: 'string', format: 'date-time' },
+          estado: { type: 'string', enum: ['ACTIVA', 'REPORTADA', 'VENCIDA'] },
+        },
+      },
+      CrearTicketDTO: {
+        type: 'object',
+        properties: {
+          descripcion: { type: 'string', minLength: 1 },
+          usuarioId: { type: 'string', format: 'uuid' },
+          asesorId: { type: 'string', format: 'uuid', nullable: true },
+          cuentaId: { type: 'string', format: 'uuid' },
+          prioridad: { type: 'string', enum: PRIORIDADES_TICKET, default: 'MEDIA' },
+        },
+        required: ['descripcion', 'usuarioId', 'cuentaId'],
+      },
+      ActualizarTicketDTO: {
+        type: 'object',
+        properties: {
+          descripcion: { type: 'string', minLength: 1 },
+          estado: { type: 'string', enum: ESTADOS_TICKET },
+          prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
+          asesorId: { type: 'string', format: 'uuid', nullable: true },
+          cuentaId: { type: 'string', format: 'uuid' },
+        },
       },
     },
     securitySchemes: {
