@@ -68,7 +68,7 @@ const respuestaError = (description: string, ejemplo: string) => ({
 export const openapi = {
   openapi: '3.0.3',
   info: {
-    title: 'HelpDesk UAM · API',
+    title: 'Streamdesk · API',
     version: '1.0.0',
     description: [
       'API del sistema de gestión de tickets de soporte de la Universidad Autónoma de Manizales.',

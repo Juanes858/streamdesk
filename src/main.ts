@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   await prisma.usuario.count()
 
   // El servidor solo se expone después de confirmar la conexión con la BD.
-  app.listen(puerto, () => console.log(`HelpDesk UAM escuchando en http://localhost:${puerto}/api · docs en /api/docs`))
+  app.listen(puerto, () => console.log(`Streamdesk escuchando en http://localhost:${puerto}/api · docs en /api/docs`))
 }
 
 // Un error de conexión impide arrancar la aplicación y deja el diagnóstico en consola.
