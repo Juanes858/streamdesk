@@ -1,9 +1,12 @@
 import type { Cuenta } from '../../dominio/modelo/Cuenta'
-import type { CambiosCuenta, CuentaDAO, ServicioClaves } from '../../dominio/puertos'
+import type { CambiosCuenta, CuentaDAO, ServicioClaves, PlataformaDAO } from '../../dominio/puertos'
+import { PlataformaCuentaNoExiste } from './RegistrarCuenta'
+
 
 export class CuentaNoEncontrada extends Error {
   constructor(id: string) {
     super(`No existe la cuenta ${id}`)
+    
   }
 }
 
@@ -20,6 +23,7 @@ export class ActualizarCuenta {
   constructor(
     private readonly cuentas: CuentaDAO,
     private readonly claves: ServicioClaves,
+    private readonly plataformas: PlataformaDAO,
   ) {}
 
   async ejecutar(id: string, datos: ActualizacionCuentaDTO): Promise<Cuenta> {
@@ -31,6 +35,9 @@ export class ActualizarCuenta {
       ...(datos.fechaInicio !== undefined && { fechaInicio: datos.fechaInicio }),
       ...(datos.fechaFin !== undefined && { fechaFin: datos.fechaFin }),
       ...(datos.estado !== undefined && { estado: datos.estado }),
+    }
+        if (datos.plataformaId !== undefined && !(await this.plataformas.porId(datos.plataformaId))) {
+      throw new PlataformaCuentaNoExiste(datos.plataformaId)
     }
     return this.cuentas.actualizar(id, cambios)
   }

@@ -1,9 +1,17 @@
 import type { Cuenta } from '../../dominio/modelo/Cuenta'
-import type { ServicioClaves, CuentaDAO, UsuarioDAO } from '../../dominio/puertos'
+
+import type { ServicioClaves, CuentaDAO, PlataformaDAO, UsuarioDAO } from '../../dominio/puertos'
+
 
 export class UsuarioCuentaNoExiste extends Error {
   constructor(usuarioId: string) {
     super(`El usuario ${usuarioId} no existe`)
+  }
+}
+
+export class PlataformaCuentaNoExiste extends Error {
+  constructor(plataformaId: string) {
+    super(`La plataforma ${plataformaId} no existe`)
   }
 }
 
@@ -22,6 +30,7 @@ export class RegistrarCuenta {
     private readonly cuentas: CuentaDAO,
     private readonly usuarios: UsuarioDAO,
     private readonly claves: ServicioClaves,
+    private readonly plataformas: PlataformaDAO,
   ) {}
 
   async ejecutar(datos: RegistroCuentaDTO): Promise<Cuenta> {
@@ -29,6 +38,8 @@ export class RegistrarCuenta {
     // La clave de acceso se cifra antes de guardarla y nunca sale por HTTP.
     const usuario = await this.usuarios.porId(datos.usuarioId)
     if (!usuario) throw new UsuarioCuentaNoExiste(datos.usuarioId)
+        const plataforma = await this.plataformas.porId(datos.plataformaId)
+    if (!plataforma) throw new PlataformaCuentaNoExiste(datos.plataformaId) 
 
     return this.cuentas.guardar({
       usuarioId: datos.usuarioId,
