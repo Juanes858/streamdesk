@@ -10,13 +10,15 @@ import { rutasUsuarios } from './rutas/usuarios'
 import type { DependenciasUsuarios } from './rutas/usuarios'
 import { rutasTickets } from './rutas/tickets'
 import type { DependenciasTickets } from './rutas/tickets'
+import { rutasPlataformas } from './rutas/plataformas'
+import type { DependenciasPlataformas } from './rutas/plataformas'
 
 const errores: ErrorRequestHandler = (error, _req, res, _next) => {
   console.error(error)
   res.status(500).json({ error: 'Error interno' })
 }
 
-export interface DependenciasServidor extends DependenciasAutenticacion, DependenciasUsuarios, DependenciasCuentas, DependenciasTickets {}
+export interface DependenciasServidor extends DependenciasAutenticacion, DependenciasUsuarios, DependenciasPlataformas, DependenciasCuentas, DependenciasTickets {}
 
 export function crearServidor(deps: DependenciasServidor): Express {
   const api = Router()
