@@ -7,6 +7,7 @@
 import type { Cuenta, CuentaNueva, EstadoCuenta } from '../modelo/Cuenta'
 import type { EstadoTicket, Prioridad, Ticket, TicketNuevo } from '../modelo/Ticket'
 import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
+import type { Plataforma, PlataformaNueva } from '../modelo/Plataforma'
 
 export interface UsuarioDAO {
   // Estos contratos permiten probar los casos de uso sin Express, Prisma o BD.
@@ -51,6 +52,21 @@ export type CambiosCuenta = Partial<{
   fechaInicio: Date
   fechaFin: Date
   estado: EstadoCuenta
+}>
+
+export interface PlataformaDAO {
+  // La aplicación depende de este contrato, no de PlataformaDAOPrisma.
+  guardar(plataforma: PlataformaNueva): Promise<Plataforma>
+  porId(id: string): Promise<Plataforma | null>
+  porNombre(nombre: string): Promise<Plataforma | null>
+  listarTodas(): Promise<Plataforma[]>
+  actualizar(id: string, cambios: CambiosPlataforma): Promise<Plataforma>
+  eliminar(id: string): Promise<void>
+}
+
+export type CambiosPlataforma = Partial<{
+  nombre: string
+  activa: boolean
 }>
 
 export interface TicketDAO {
