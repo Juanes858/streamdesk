@@ -71,8 +71,8 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
       res.status(201).json(aCuentaDTO(cuenta))
     } catch (error) {
       if (error instanceof UsuarioCuentaNoExiste) return void res.status(404).json({ error: error.message })
+      if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
       next(error)
-          if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
     }
   })
 
@@ -115,10 +115,10 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     try {
       const cuenta = await new ActualizarCuenta(deps.cuentas, deps.claves, deps.plataformas).ejecutar(id, cambios)
       res.json(aCuentaDTO(cuenta))
-    } catch (error) {
+        } catch (error) {
       if (error instanceof CuentaNoEncontrada) return void res.status(404).json({ error: error.message })
+      if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
       next(error)
-          if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
     }
   })
 
