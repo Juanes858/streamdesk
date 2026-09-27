@@ -30,6 +30,7 @@ export function crearServidor(deps: DependenciasServidor): Express {
   }))
   api.use('/auth', rutasAutenticacion(deps))
   api.use('/usuarios', rutasUsuarios(deps))
+  api.use('/plataformas', rutasPlataformas(deps))
   api.use('/cuentas', rutasCuentas(deps))
   api.use('/tickets', rutasTickets(deps))
 
