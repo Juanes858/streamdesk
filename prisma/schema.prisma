@@ -27,6 +27,13 @@ model Usuario {
   ticketsComoAsesor Ticket[] @relation("TicketAsesor")
 }
 
+model Plataforma {
+  id      String   @id @default(uuid())
+  nombre  String   @unique
+  activa  Boolean  @default(true)
+  cuentas Cuenta[]
+}
+
 enum EstadoCuenta {
   ACTIVA
   REPORTADA
@@ -38,6 +45,7 @@ model Cuenta {
   usuarioId    String
   usuario      Usuario      @relation(fields: [usuarioId], references: [id])
   plataformaId String
+  plataforma   Plataforma @relation(fields: [plataformaId], references: [id])
   correo       String
   claveHash    String
   fechaInicio  DateTime
