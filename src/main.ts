@@ -10,6 +10,7 @@ import { TicketDAOPrisma } from './infraestructura/persistencia/TicketDAOPrisma'
 import { ClavesBcrypt } from './infraestructura/seguridad/ClavesBcrypt'
 import { TokensJwt } from './infraestructura/seguridad/TokensJwt'
 import { crearServidor } from './infraestructura/http/servidor'
+import { PlataformaDAOPrisma } from './infraestructura/persistencia/PlataformaDAOPrisma'
 
 const secreto = process.env['JWT_SECRET']
 if (!secreto) throw new Error('Falta JWT_SECRET (copia .env.example a .env)')
@@ -21,6 +22,7 @@ const cuentas = new CuentaDAOPrisma(prisma)
 const tickets = new TicketDAOPrisma(prisma)
 const claves = new ClavesBcrypt()
 const tokens = new TokensJwt(secreto)
+const plataformas = new PlataformaDAOPrisma(prisma)
 
 // El servidor recibe contratos abstractos, por eso HTTP y aplicación no
 // necesitan saber qué ORM o proveedor criptográfico se está utilizando.
@@ -28,6 +30,7 @@ const app = crearServidor({
   usuarios,
   cuentas,
   tickets,
+  plataformas,
   claves,
   tokens,
   registrarUsuario: new RegistrarUsuario(usuarios, claves),
