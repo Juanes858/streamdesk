@@ -30,7 +30,7 @@ export class TicketDAOPrisma implements TicketDAO {
     return fila && aDominio(fila)
   }
 
-  async listar(filtros: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket } = {}, q?: string): Promise<Ticket[]> {
+  async listar(filtros: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket } = {}, q?: string, orden?: 'asc' | 'desc'): Promise<Ticket[]> {
     const textoBusqueda = q?.trim()
     const filas = await this.prisma.ticket.findMany({
       where: {
@@ -40,6 +40,7 @@ export class TicketDAOPrisma implements TicketDAO {
         ...(filtros.estado !== undefined && { estado: filtros.estado as $Enums.EstadoTicket }),
         ...(textoBusqueda && { descripcion: { contains: textoBusqueda, mode: 'insensitive' as const } }),
       },
+      ...(orden !== undefined && { orderBy: { creadoEn: orden } }),
     })
     return filas.map(aDominio)
   }

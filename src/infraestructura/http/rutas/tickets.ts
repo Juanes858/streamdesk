@@ -120,13 +120,21 @@ export function rutasTickets(deps: DependenciasTickets): Router {
       : Array.isArray(valorQ) && typeof valorQ[0] === 'string'
         ? valorQ[0].trim() || undefined
         : undefined
+    const valorOrden = req.query['orden']
+    let orden: 'asc' | 'desc' | undefined
+    if (valorOrden !== undefined) {
+      if (valorOrden !== 'asc' && valorOrden !== 'desc') {
+        return void res.status(400).json({ mensaje: "El parámetro orden solo acepta los valores 'asc' o 'desc'" })
+      }
+      orden = valorOrden
+    }
     if (typeof req.query['cuentaId'] === 'string') filtros.cuentaId = req.query['cuentaId']
     if (req.query['estado'] !== undefined) {
       if (!esEstadoTicket(req.query['estado'])) return void res.status(400).json({ error: 'estado inválido' })
       filtros.estado = req.query['estado']
     }
     try {
-      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros, q))
+      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros, q, orden))
     } catch (error) {
       next(error)
     }
