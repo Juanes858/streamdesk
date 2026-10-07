@@ -22,13 +22,16 @@ function idValido(valor: unknown): valor is string {
 
 function validarCreacion(cuerpo: unknown): { descripcion: string; prioridad: Prioridad; usuarioId: string; asesorId: string | null; cuentaId: string; estado: EstadoTicket } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
-  if (typeof datos['descripcion'] !== 'string' || !datos['descripcion'].trim()) return 'descripcion requerida'
+  const titulo = datos['titulo'] !== undefined ? datos['titulo'] : datos['descripcion']
+  if (typeof titulo !== 'string' || !titulo.trim()) return 'titulo requerido'
+  const descripcion = titulo.trim()
+  if (descripcion.length < 5 || descripcion.length > 100) return 'El título del ticket debe tener entre 5 y 100 caracteres'
   if (!idValido(datos['usuarioId'])) return 'usuarioId requerido'
   if (!idValido(datos['cuentaId'])) return 'cuentaId requerido'
   if (datos['prioridad'] !== undefined && !esPrioridadTicket(datos['prioridad'])) return 'prioridad inválida'
   if (datos['asesorId'] !== undefined && datos['asesorId'] !== null && !idValido(datos['asesorId'])) return 'asesorId inválido'
   return {
-    descripcion: datos['descripcion'].trim(),
+    descripcion,
     prioridad: (datos['prioridad'] ?? 'MEDIA') as Prioridad,
     usuarioId: datos['usuarioId'],
     asesorId: datos['asesorId'] === null ? null : (datos['asesorId'] as string | undefined) ?? null,
@@ -55,6 +58,12 @@ function validarCambios(cuerpo: unknown): CambiosTicket | string {
   if (datos['asesorId'] !== undefined) {
     if (datos['asesorId'] !== null && !idValido(datos['asesorId'])) return 'asesorId inválido'
     cambios.asesorId = datos['asesorId'] as string | null
+  }
+  if (datos['titulo'] !== undefined) {
+    if (typeof datos['titulo'] !== 'string' || !datos['titulo'].trim()) return 'titulo inválido'
+    const titulo = datos['titulo'].trim()
+    if (titulo.length < 5 || titulo.length > 100) return 'El título del ticket debe tener entre 5 y 100 caracteres'
+    cambios.descripcion = titulo
   }
   if (datos['cuentaId'] !== undefined) {
     if (!idValido(datos['cuentaId'])) return 'cuentaId inválido'
