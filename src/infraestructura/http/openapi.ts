@@ -510,6 +510,28 @@ export const openapi = {
       },
     },
 
+    '/tickets/resumen': {
+      get: {
+        tags: ['Tickets'],
+        summary: 'Obtener resumen de tickets por estado',
+        description: 'Solo un administrador puede consultar el conteo de tickets agrupados por estado.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'Cantidad de tickets por estado.',
+            content: {
+              'application/json': {
+                schema: { type: 'object', additionalProperties: { type: 'integer' } },
+                example: { NUEVO: 4, EN_PROCESO: 2, CERRADO: 1 },
+              },
+            },
+          },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+        },
+      },
+    },
+
     '/tickets/{id}': {
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       get: {

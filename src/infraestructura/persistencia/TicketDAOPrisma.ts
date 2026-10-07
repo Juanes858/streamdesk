@@ -44,6 +44,17 @@ export class TicketDAOPrisma implements TicketDAO {
     return filas.map(aDominio)
   }
 
+  async obtenerResumenPorEstado(): Promise<Record<string, number>> {
+    const filas = await this.prisma.ticket.groupBy({
+      by: ['estado'],
+      _count: { estado: true },
+    })
+    return filas.reduce<Record<string, number>>((resumen, fila) => {
+      resumen[fila.estado] = fila._count.estado
+      return resumen
+    }, {})
+  }
+
   async actualizar(id: string, cambios: CambiosTicket): Promise<Ticket> {
     return aDominio(await this.prisma.ticket.update({
       where: { id },

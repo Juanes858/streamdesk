@@ -4,6 +4,7 @@ import { AsesorTicketInvalido, CrearTicket, CuentaTicketNoExiste, CuentaTicketNo
 import { EliminarTicket } from '../../../aplicacion/casos-uso/EliminarTicket'
 import { ListarTickets } from '../../../aplicacion/casos-uso/ListarTickets'
 import { ObtenerTicket, TicketNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerTicket'
+import { ResumenTickets } from '../../../aplicacion/casos-uso/ResumenTickets'
 import { esEstadoTicket, esPrioridadTicket } from '../../../dominio/modelo/Ticket'
 import type { EstadoTicket, Prioridad } from '../../../dominio/modelo/Ticket'
 import type { CambiosTicket, CuentaDAO, ServicioTokens, TicketDAO, UsuarioDAO } from '../../../dominio/puertos'
@@ -85,6 +86,7 @@ export function rutasTickets(deps: DependenciasTickets): Router {
   // Clientes crean y consultan sus tickets; admin y asesores los gestionan.
   const sesion = exigirSesion(deps.tokens)
   const gestionTickets = exigirRoles(deps.tokens, 'ADMINISTRADOR', 'ASESOR')
+  const soloAdministrador = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
   rutas.post('/', sesion, async (req, res, next) => {
     const datos = validarCreacion(req.body)
@@ -125,6 +127,14 @@ export function rutasTickets(deps: DependenciasTickets): Router {
     }
     try {
       res.json(await new ListarTickets(deps.tickets).ejecutar(filtros, q))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  rutas.get('/resumen', soloAdministrador, async (_req, res, next) => {
+    try {
+      res.json(await new ResumenTickets(deps.tickets).ejecutar())
     } catch (error) {
       next(error)
     }

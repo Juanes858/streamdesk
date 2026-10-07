@@ -74,6 +74,7 @@ export interface TicketDAO {
   guardar(ticket: TicketNuevo): Promise<Ticket>
   porId(id: string): Promise<Ticket | null>
   listar(filtros?: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket }, q?: string): Promise<Ticket[]>
+  obtenerResumenPorEstado(): Promise<Record<string, number>>
   actualizar(id: string, cambios: Partial<Omit<Ticket, 'id'>>): Promise<Ticket>
   eliminar(id: string): Promise<void>
 }
