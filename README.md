@@ -108,10 +108,157 @@ Todo cuelga del prefijo `/api`.
 | `PATCH` | `/api/cuentas/:id` | Actualiza una cuenta; requiere admin |
 | `DELETE` | `/api/cuentas/:id` | Elimina una cuenta; requiere admin |
 | `POST` | `/api/tickets` | Crea un ticket; requiere token |
-| `GET` | `/api/tickets?estado=NUEVO` | Lista tickets, con filtros opcionales; requiere token |
+| `GET` | `/api/tickets?estado=NUEVO&q=texto&orden=desc` | Lista y filtra tickets; orden opcional `asc`/`desc`; requiere token |
+| `GET` | `/api/tickets/resumen` | Resume tickets por estado; requiere admin |
 | `GET` | `/api/tickets/:id` | Consulta un ticket; requiere token |
 | `PATCH` | `/api/tickets/:id` | Actualiza asesor, cuenta, prioridad, estado o descripción; requiere admin/asesor |
 | `DELETE` | `/api/tickets/:id` | Elimina un ticket; requiere admin/asesor |
+
+### Ticket
+
+Un ticket representa una solicitud de soporte asociada a un usuario y a una de
+sus cuentas. Su respuesta HTTP (`TicketDTO`) contiene estos campos:
+
+- `id`: identificador UUID del ticket.
+- `usuarioId`: UUID del usuario dueño del ticket.
+- `asesorId`: UUID del asesor asignado o `null`.
+- `cuentaId`: UUID de la cuenta asociada.
+- `descripcion`: texto del ticket que devuelve la API. Al crear o actualizar,
+   `titulo` se acepta como entrada (5–100 caracteres); también se acepta
+   `descripcion` como entrada (máximo 1000 caracteres). La entidad persiste el
+   texto bajo el campo `descripcion`.
+- `estado`: estado actual del ticket.
+- `prioridad`: prioridad actual del ticket.
+
+Estados permitidos: `NUEVO`, `ASIGNADO`, `EN_PROCESO`,
+`ESPERA_INFORMACION`, `RESUELTO`, `CERRADO`.
+
+Prioridades permitidas: `BAJA`, `MEDIA`, `ALTA`, `CRITICA`.
+
+#### Crear ticket
+
+`POST /api/tickets` requiere token. En el ejemplo se usa `titulo`; se puede
+enviar `descripcion` en su lugar. `prioridad` y `asesorId` son opcionales.
+
+Request:
+
+```json
+{
+   "titulo": "No puedo acceder a mi cuenta",
+   "usuarioId": "cd9c06cf-b57f-4e22-bc47-589a074e8c2c",
+   "cuentaId": "51f6b3c2-6547-4ae1-9965-203644410b84",
+   "prioridad": "MEDIA"
+}
+```
+
+Response `201 Created`:
+
+```json
+{
+   "id": "d932902f-73cc-45e8-91dc-334bd88562b9",
+   "usuarioId": "cd9c06cf-b57f-4e22-bc47-589a074e8c2c",
+   "asesorId": null,
+   "cuentaId": "51f6b3c2-6547-4ae1-9965-203644410b84",
+   "descripcion": "No puedo acceder a mi cuenta",
+   "estado": "NUEVO",
+   "prioridad": "MEDIA"
+}
+```
+
+El título debe tener entre 5 y 100 caracteres. La descripción no puede superar
+1000 caracteres.
+
+#### Listar tickets
+
+`GET /api/tickets` requiere token. Un cliente solo ve sus propios tickets; un
+asesor ve los tickets que tiene asignados. Admite filtros `usuarioId`,
+`asesorId`, `cuentaId` y `estado` según el rol. `q` busca texto en el título sin
+distinguir mayúsculas y minúsculas, y `orden=asc` o `orden=desc` ordena por fecha
+de creación.
+
+Ejemplo: `GET /api/tickets?q=acceder&orden=desc`
+
+Response `200 OK`:
+
+```json
+[
+   {
+      "id": "d932902f-73cc-45e8-91dc-334bd88562b9",
+      "usuarioId": "cd9c06cf-b57f-4e22-bc47-589a074e8c2c",
+      "asesorId": null,
+      "cuentaId": "51f6b3c2-6547-4ae1-9965-203644410b84",
+      "descripcion": "No puedo acceder a mi cuenta",
+      "estado": "NUEVO",
+      "prioridad": "MEDIA"
+   }
+]
+```
+
+#### Consultar ticket
+
+`GET /api/tickets/:id` requiere token y devuelve el ticket si la persona tiene
+permiso para consultarlo.
+
+Response `200 OK`:
+
+```json
+{
+   "id": "d932902f-73cc-45e8-91dc-334bd88562b9",
+   "usuarioId": "cd9c06cf-b57f-4e22-bc47-589a074e8c2c",
+   "asesorId": null,
+   "cuentaId": "51f6b3c2-6547-4ae1-9965-203644410b84",
+   "descripcion": "No puedo acceder a mi cuenta",
+   "estado": "NUEVO",
+   "prioridad": "MEDIA"
+}
+```
+
+Si el ticket no existe, responde `404 Not Found`.
+
+#### Actualizar ticket
+
+`PATCH /api/tickets/:id` requiere rol `ADMINISTRADOR` o `ASESOR`. Envía solo los
+campos que quieras modificar; `titulo` es opcional y, si se incluye, debe tener
+entre 5 y 100 caracteres. `descripcion` admite hasta 1000 caracteres.
+
+Request:
+
+```json
+{
+   "titulo": "No puedo iniciar sesión en mi cuenta"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+   "id": "d932902f-73cc-45e8-91dc-334bd88562b9",
+   "usuarioId": "cd9c06cf-b57f-4e22-bc47-589a074e8c2c",
+   "asesorId": null,
+   "cuentaId": "51f6b3c2-6547-4ae1-9965-203644410b84",
+   "descripcion": "No puedo iniciar sesión en mi cuenta",
+   "estado": "NUEVO",
+   "prioridad": "MEDIA"
+}
+```
+
+#### Resumen por estado
+
+`GET /api/tickets/resumen` requiere rol `ADMINISTRADOR`. Devuelve un mapa cuyas
+llaves son estados de ticket y cuyos valores son cantidades:
+
+```json
+{
+   "NUEVO": 4,
+   "CERRADO": 2
+}
+```
+
+#### Eliminar ticket
+
+`DELETE /api/tickets/:id` requiere rol `ADMINISTRADOR` o `ASESOR`. Responde
+`204 No Content` cuando el ticket se elimina correctamente.
 
 Roles: `CLIENTE` (por defecto), `ASESOR`, `ADMINISTRADOR`.
 El token es un JWT HS256 con vigencia de 8 horas.

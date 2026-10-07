@@ -79,6 +79,7 @@ model Ticket {
   cuentaId      String
   cuenta        Cuenta       @relation(fields: [cuentaId], references: [id], onDelete: Restrict)
   descripcion   String
+  creadoEn      DateTime     @default(now())
   estado        EstadoTicket @default(NUEVO)
   prioridad     Prioridad    @default(MEDIA)
 }

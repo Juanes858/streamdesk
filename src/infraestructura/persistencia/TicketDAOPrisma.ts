@@ -30,16 +30,30 @@ export class TicketDAOPrisma implements TicketDAO {
     return fila && aDominio(fila)
   }
 
-  async listar(filtros: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket } = {}): Promise<Ticket[]> {
+  async listar(filtros: { usuarioId?: string; asesorId?: string; cuentaId?: string; estado?: EstadoTicket } = {}, q?: string, orden?: 'asc' | 'desc'): Promise<Ticket[]> {
+    const textoBusqueda = q?.trim()
     const filas = await this.prisma.ticket.findMany({
       where: {
         ...(filtros.usuarioId !== undefined && { usuarioId: filtros.usuarioId }),
         ...(filtros.asesorId !== undefined && { asesorId: filtros.asesorId }),
         ...(filtros.cuentaId !== undefined && { cuentaId: filtros.cuentaId }),
         ...(filtros.estado !== undefined && { estado: filtros.estado as $Enums.EstadoTicket }),
+        ...(textoBusqueda && { descripcion: { contains: textoBusqueda, mode: 'insensitive' as const } }),
       },
+      ...(orden !== undefined && { orderBy: { creadoEn: orden } }),
     })
     return filas.map(aDominio)
+  }
+
+  async obtenerResumenPorEstado(): Promise<Record<string, number>> {
+    const filas = await this.prisma.ticket.groupBy({
+      by: ['estado'],
+      _count: { estado: true },
+    })
+    return filas.reduce<Record<string, number>>((resumen, fila) => {
+      resumen[fila.estado] = fila._count.estado
+      return resumen
+    }, {})
   }
 
   async actualizar(id: string, cambios: CambiosTicket): Promise<Ticket> {

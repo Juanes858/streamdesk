@@ -2,8 +2,10 @@ import { Router } from 'express'
 import { ActualizarTicket } from '../../../aplicacion/casos-uso/ActualizarTicket'
 import { AsesorTicketInvalido, CrearTicket, CuentaTicketNoExiste, CuentaTicketNoPertenece, UsuarioTicketNoExiste } from '../../../aplicacion/casos-uso/CrearTicket'
 import { EliminarTicket } from '../../../aplicacion/casos-uso/EliminarTicket'
+import { ListarMisTickets } from '../../../aplicacion/casos-uso/ListarMisTickets'
 import { ListarTickets } from '../../../aplicacion/casos-uso/ListarTickets'
 import { ObtenerTicket, TicketNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerTicket'
+import { ResumenTickets } from '../../../aplicacion/casos-uso/ResumenTickets'
 import { esEstadoTicket, esPrioridadTicket } from '../../../dominio/modelo/Ticket'
 import type { EstadoTicket, Prioridad } from '../../../dominio/modelo/Ticket'
 import type { CambiosTicket, CuentaDAO, ServicioTokens, TicketDAO, UsuarioDAO } from '../../../dominio/puertos'
@@ -22,13 +24,22 @@ function idValido(valor: unknown): valor is string {
 
 function validarCreacion(cuerpo: unknown): { descripcion: string; prioridad: Prioridad; usuarioId: string; asesorId: string | null; cuentaId: string; estado: EstadoTicket } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
-  if (typeof datos['descripcion'] !== 'string' || !datos['descripcion'].trim()) return 'descripcion requerida'
+  if (typeof datos['descripcion'] === 'string' && datos['descripcion'].trim().length > 1000) {
+    return 'La descripción del ticket no puede superar los 1000 caracteres'
+  }
+  const titulo = datos['titulo'] !== undefined ? datos['titulo'] : datos['descripcion']
+  if (typeof titulo !== 'string' || !titulo.trim()) return 'titulo requerido'
+  const descripcion = titulo.trim()
+  if (descripcion.length < 5 || (datos['titulo'] !== undefined && descripcion.length > 100)) {
+    return 'El título del ticket debe tener entre 5 y 100 caracteres'
+  }
+  if (descripcion.length > 1000) return 'La descripción del ticket no puede superar los 1000 caracteres'
   if (!idValido(datos['usuarioId'])) return 'usuarioId requerido'
   if (!idValido(datos['cuentaId'])) return 'cuentaId requerido'
   if (datos['prioridad'] !== undefined && !esPrioridadTicket(datos['prioridad'])) return 'prioridad inválida'
   if (datos['asesorId'] !== undefined && datos['asesorId'] !== null && !idValido(datos['asesorId'])) return 'asesorId inválido'
   return {
-    descripcion: datos['descripcion'].trim(),
+    descripcion,
     prioridad: (datos['prioridad'] ?? 'MEDIA') as Prioridad,
     usuarioId: datos['usuarioId'],
     asesorId: datos['asesorId'] === null ? null : (datos['asesorId'] as string | undefined) ?? null,
@@ -42,7 +53,9 @@ function validarCambios(cuerpo: unknown): CambiosTicket | string {
   const cambios: CambiosTicket = {}
   if (datos['descripcion'] !== undefined) {
     if (typeof datos['descripcion'] !== 'string' || !datos['descripcion'].trim()) return 'descripcion inválida'
-    cambios.descripcion = datos['descripcion'].trim()
+    const descripcion = datos['descripcion'].trim()
+    if (descripcion.length > 1000) return 'La descripción del ticket no puede superar los 1000 caracteres'
+    cambios.descripcion = descripcion
   }
   if (datos['estado'] !== undefined) {
     if (!esEstadoTicket(datos['estado'])) return 'estado inválido'
@@ -56,6 +69,12 @@ function validarCambios(cuerpo: unknown): CambiosTicket | string {
     if (datos['asesorId'] !== null && !idValido(datos['asesorId'])) return 'asesorId inválido'
     cambios.asesorId = datos['asesorId'] as string | null
   }
+  if (datos['titulo'] !== undefined) {
+    if (typeof datos['titulo'] !== 'string' || !datos['titulo'].trim()) return 'titulo inválido'
+    const titulo = datos['titulo'].trim()
+    if (titulo.length < 5 || titulo.length > 100) return 'El título del ticket debe tener entre 5 y 100 caracteres'
+    cambios.descripcion = titulo
+  }
   if (datos['cuentaId'] !== undefined) {
     if (!idValido(datos['cuentaId'])) return 'cuentaId inválido'
     cambios.cuentaId = datos['cuentaId']
@@ -68,6 +87,7 @@ export function rutasTickets(deps: DependenciasTickets): Router {
   // Clientes crean y consultan sus tickets; admin y asesores los gestionan.
   const sesion = exigirSesion(deps.tokens)
   const gestionTickets = exigirRoles(deps.tokens, 'ADMINISTRADOR', 'ASESOR')
+  const soloAdministrador = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
   rutas.post('/', sesion, async (req, res, next) => {
     const datos = validarCreacion(req.body)
@@ -95,13 +115,44 @@ export function rutasTickets(deps: DependenciasTickets): Router {
     } else {
       filtros.usuarioId = credencial.id
     }
+    const valorQ = req.query['q']
+    const q = typeof valorQ === 'string'
+      ? valorQ.trim() || undefined
+      : Array.isArray(valorQ) && typeof valorQ[0] === 'string'
+        ? valorQ[0].trim() || undefined
+        : undefined
+    const valorOrden = req.query['orden']
+    let orden: 'asc' | 'desc' | undefined
+    if (valorOrden !== undefined) {
+      if (valorOrden !== 'asc' && valorOrden !== 'desc') {
+        return void res.status(400).json({ mensaje: "El parámetro orden solo acepta los valores 'asc' o 'desc'" })
+      }
+      orden = valorOrden
+    }
     if (typeof req.query['cuentaId'] === 'string') filtros.cuentaId = req.query['cuentaId']
     if (req.query['estado'] !== undefined) {
       if (!esEstadoTicket(req.query['estado'])) return void res.status(400).json({ error: 'estado inválido' })
       filtros.estado = req.query['estado']
     }
     try {
-      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros))
+      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros, q, orden))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  rutas.get('/resumen', soloAdministrador, async (_req, res, next) => {
+    try {
+      res.json(await new ResumenTickets(deps.tickets).ejecutar())
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  rutas.get('/mios', sesion, async (_req, res, next) => {
+    const credencial = res.locals['credencial'] as { id: string }
+    try {
+      res.status(200).json(await new ListarMisTickets(deps.tickets).ejecutar(credencial.id))
     } catch (error) {
       next(error)
     }

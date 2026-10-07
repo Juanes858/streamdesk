@@ -59,9 +59,10 @@ const cuenta = {
 
 const ticket = {
   type: 'object',
+  description: 'El texto se recibe como `titulo` al crear o actualizar; el recurso conserva el campo `descripcion`.',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    descripcion: { type: 'string', example: 'La contraseña dejó de funcionar.' },
+    descripcion: { type: 'string', maxLength: 1000, example: 'La contraseña dejó de funcionar.' },
     estado: { type: 'string', enum: ESTADOS_TICKET },
     prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
     usuarioId: { type: 'string', format: 'uuid' },
@@ -471,11 +472,21 @@ export const openapi = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/CrearTicketDTO' } } },
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/CrearTicketDTO' },
+              example: {
+                titulo: 'No puedo acceder a mi cuenta',
+                usuarioId: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c',
+                cuentaId: '51f6b3c2-6547-4ae1-9965-203644410b84',
+                prioridad: 'MEDIA',
+              },
+            },
+          },
         },
         responses: {
           201: { description: 'Ticket creado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
-          400: respuestaError('Datos inválidos.', 'descripcion requerida'),
+          400: respuestaError('Datos inválidos, título fuera del rango de 5 a 100 caracteres o descripción superior a 1000 caracteres.', 'La descripción del ticket no puede superar los 1000 caracteres'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('El usuario, asesor o cuenta no existe.', 'No existe la cuenta ...'),
         },
@@ -489,10 +500,47 @@ export const openapi = {
           { name: 'asesorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'cuentaId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'estado', in: 'query', schema: { type: 'string', enum: ESTADOS_TICKET } },
+          { name: 'q', in: 'query', description: 'Busca tickets por texto en el título, sin distinguir mayúsculas y minúsculas.', schema: { type: 'string' } },
+          { name: 'orden', in: 'query', required: false, description: 'Ordena por fecha de creación.', schema: { type: 'string', enum: ['asc', 'desc'] } },
         ],
         responses: {
           200: { description: 'Tickets encontrados.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },
           400: respuestaError('Filtro de estado inválido.', 'estado inválido'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+
+    '/tickets/resumen': {
+      get: {
+        tags: ['Tickets'],
+        summary: 'Obtener resumen de tickets por estado',
+        description: 'Solo un administrador puede consultar el conteo de tickets agrupados por estado.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: 'Cantidad de tickets por estado.',
+            content: {
+              'application/json': {
+                schema: { type: 'object', additionalProperties: { type: 'integer' } },
+                example: { NUEVO: 4, EN_PROCESO: 2, CERRADO: 1 },
+              },
+            },
+          },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+        },
+      },
+    },
+
+    '/tickets/mios': {
+      get: {
+        tags: ['Tickets'],
+        summary: 'Listar mis tickets',
+        description: 'Devuelve únicamente los tickets pertenecientes al usuario identificado por el token.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Tickets del usuario autenticado.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
         },
       },
@@ -516,11 +564,16 @@ export const openapi = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarTicketDTO' } } },
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ActualizarTicketDTO' },
+              example: { titulo: 'No puedo acceder a mi cuenta' },
+            },
+          },
         },
         responses: {
           200: { description: 'Ticket actualizado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
-          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          400: respuestaError('Cambios inválidos, título fuera del rango de 5 a 100 caracteres o descripción superior a 1000 caracteres.', 'La descripción del ticket no puede superar los 1000 caracteres'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('Ticket, asesor o cuenta no encontrado.', 'No existe la cuenta ...'),
         },
@@ -597,18 +650,21 @@ ActualizarPlataformaDTO: {
       CrearTicketDTO: {
         type: 'object',
         properties: {
-          descripcion: { type: 'string', minLength: 1 },
+          titulo: { type: 'string', minLength: 5, maxLength: 100, example: 'No puedo acceder a mi cuenta' },
+          descripcion: { type: 'string', minLength: 5, maxLength: 1000, description: 'Alias compatible para el título del ticket.' },
           usuarioId: { type: 'string', format: 'uuid' },
           asesorId: { type: 'string', format: 'uuid', nullable: true },
           cuentaId: { type: 'string', format: 'uuid' },
           prioridad: { type: 'string', enum: PRIORIDADES_TICKET, default: 'MEDIA' },
         },
-        required: ['descripcion', 'usuarioId', 'cuentaId'],
+        required: ['usuarioId', 'cuentaId'],
+        anyOf: [{ required: ['titulo'] }, { required: ['descripcion'] }],
       },
       ActualizarTicketDTO: {
         type: 'object',
         properties: {
-          descripcion: { type: 'string', minLength: 1 },
+          titulo: { type: 'string', minLength: 5, maxLength: 100, example: 'No puedo acceder a mi cuenta' },
+          descripcion: { type: 'string', minLength: 1, maxLength: 1000 },
           estado: { type: 'string', enum: ESTADOS_TICKET },
           prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
           asesorId: { type: 'string', format: 'uuid', nullable: true },
