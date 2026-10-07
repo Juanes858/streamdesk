@@ -62,7 +62,7 @@ const ticket = {
   description: 'El texto se recibe como `titulo` al crear o actualizar; el recurso conserva el campo `descripcion`.',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    descripcion: { type: 'string', example: 'La contraseña dejó de funcionar.' },
+    descripcion: { type: 'string', maxLength: 1000, example: 'La contraseña dejó de funcionar.' },
     estado: { type: 'string', enum: ESTADOS_TICKET },
     prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
     usuarioId: { type: 'string', format: 'uuid' },
@@ -486,7 +486,7 @@ export const openapi = {
         },
         responses: {
           201: { description: 'Ticket creado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
-          400: respuestaError('Datos inválidos o título fuera del rango de 5 a 100 caracteres.', 'El título del ticket debe tener entre 5 y 100 caracteres'),
+          400: respuestaError('Datos inválidos, título fuera del rango de 5 a 100 caracteres o descripción superior a 1000 caracteres.', 'La descripción del ticket no puede superar los 1000 caracteres'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('El usuario, asesor o cuenta no existe.', 'No existe la cuenta ...'),
         },
@@ -536,7 +536,7 @@ export const openapi = {
         },
         responses: {
           200: { description: 'Ticket actualizado.', content: { 'application/json': { schema: { $ref: '#/components/schemas/TicketDTO' } } } },
-          400: respuestaError('Cambios inválidos o título fuera del rango de 5 a 100 caracteres.', 'El título del ticket debe tener entre 5 y 100 caracteres'),
+          400: respuestaError('Cambios inválidos, título fuera del rango de 5 a 100 caracteres o descripción superior a 1000 caracteres.', 'La descripción del ticket no puede superar los 1000 caracteres'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('Ticket, asesor o cuenta no encontrado.', 'No existe la cuenta ...'),
         },
@@ -614,7 +614,7 @@ ActualizarPlataformaDTO: {
         type: 'object',
         properties: {
           titulo: { type: 'string', minLength: 5, maxLength: 100, example: 'No puedo acceder a mi cuenta' },
-          descripcion: { type: 'string', minLength: 5, maxLength: 100, description: 'Alias compatible para el título del ticket.' },
+          descripcion: { type: 'string', minLength: 5, maxLength: 1000, description: 'Alias compatible para el título del ticket.' },
           usuarioId: { type: 'string', format: 'uuid' },
           asesorId: { type: 'string', format: 'uuid', nullable: true },
           cuentaId: { type: 'string', format: 'uuid' },
@@ -627,7 +627,7 @@ ActualizarPlataformaDTO: {
         type: 'object',
         properties: {
           titulo: { type: 'string', minLength: 5, maxLength: 100, example: 'No puedo acceder a mi cuenta' },
-          descripcion: { type: 'string', minLength: 1 },
+          descripcion: { type: 'string', minLength: 1, maxLength: 1000 },
           estado: { type: 'string', enum: ESTADOS_TICKET },
           prioridad: { type: 'string', enum: PRIORIDADES_TICKET },
           asesorId: { type: 'string', format: 'uuid', nullable: true },

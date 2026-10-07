@@ -22,10 +22,16 @@ function idValido(valor: unknown): valor is string {
 
 function validarCreacion(cuerpo: unknown): { descripcion: string; prioridad: Prioridad; usuarioId: string; asesorId: string | null; cuentaId: string; estado: EstadoTicket } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
+  if (typeof datos['descripcion'] === 'string' && datos['descripcion'].trim().length > 1000) {
+    return 'La descripción del ticket no puede superar los 1000 caracteres'
+  }
   const titulo = datos['titulo'] !== undefined ? datos['titulo'] : datos['descripcion']
   if (typeof titulo !== 'string' || !titulo.trim()) return 'titulo requerido'
   const descripcion = titulo.trim()
-  if (descripcion.length < 5 || descripcion.length > 100) return 'El título del ticket debe tener entre 5 y 100 caracteres'
+  if (descripcion.length < 5 || (datos['titulo'] !== undefined && descripcion.length > 100)) {
+    return 'El título del ticket debe tener entre 5 y 100 caracteres'
+  }
+  if (descripcion.length > 1000) return 'La descripción del ticket no puede superar los 1000 caracteres'
   if (!idValido(datos['usuarioId'])) return 'usuarioId requerido'
   if (!idValido(datos['cuentaId'])) return 'cuentaId requerido'
   if (datos['prioridad'] !== undefined && !esPrioridadTicket(datos['prioridad'])) return 'prioridad inválida'
@@ -45,7 +51,9 @@ function validarCambios(cuerpo: unknown): CambiosTicket | string {
   const cambios: CambiosTicket = {}
   if (datos['descripcion'] !== undefined) {
     if (typeof datos['descripcion'] !== 'string' || !datos['descripcion'].trim()) return 'descripcion inválida'
-    cambios.descripcion = datos['descripcion'].trim()
+    const descripcion = datos['descripcion'].trim()
+    if (descripcion.length > 1000) return 'La descripción del ticket no puede superar los 1000 caracteres'
+    cambios.descripcion = descripcion
   }
   if (datos['estado'] !== undefined) {
     if (!esEstadoTicket(datos['estado'])) return 'estado inválido'
