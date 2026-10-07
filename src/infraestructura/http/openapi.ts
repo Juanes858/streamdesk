@@ -500,6 +500,7 @@ export const openapi = {
           { name: 'asesorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'cuentaId', in: 'query', schema: { type: 'string', format: 'uuid' } },
           { name: 'estado', in: 'query', schema: { type: 'string', enum: ESTADOS_TICKET } },
+          { name: 'q', in: 'query', description: 'Busca tickets por texto en el título, sin distinguir mayúsculas y minúsculas.', schema: { type: 'string' } },
         ],
         responses: {
           200: { description: 'Tickets encontrados.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },

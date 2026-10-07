@@ -112,13 +112,19 @@ export function rutasTickets(deps: DependenciasTickets): Router {
     } else {
       filtros.usuarioId = credencial.id
     }
+    const valorQ = req.query['q']
+    const q = typeof valorQ === 'string'
+      ? valorQ.trim() || undefined
+      : Array.isArray(valorQ) && typeof valorQ[0] === 'string'
+        ? valorQ[0].trim() || undefined
+        : undefined
     if (typeof req.query['cuentaId'] === 'string') filtros.cuentaId = req.query['cuentaId']
     if (req.query['estado'] !== undefined) {
       if (!esEstadoTicket(req.query['estado'])) return void res.status(400).json({ error: 'estado inválido' })
       filtros.estado = req.query['estado']
     }
     try {
-      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros))
+      res.json(await new ListarTickets(deps.tickets).ejecutar(filtros, q))
     } catch (error) {
       next(error)
     }
