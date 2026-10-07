@@ -122,6 +122,43 @@ Permisos actuales:
 - `ASESOR`: consulta sus tickets asignados y puede actualizarlos o eliminarlos.
 - `CLIENTE`: inicia sesión, consulta su perfil, el catálogo de plataformas, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
 
+### Plataforma
+
+Una **Plataforma** es un servicio de streaming del catálogo del sistema (por
+ejemplo `NETFLIX`, `DISNEY+` o `HBO MAX`). Sirve para que las cuentas se
+registren siempre contra un valor controlado y no contra texto libre. Una
+plataforma tiene muchas **Cuentas** (`Cuenta.plataformaId` es una llave
+foránea a `Plataforma.id`) y cada cuenta pertenece a una sola plataforma, por
+eso una plataforma con cuentas asociadas no se puede eliminar.
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `id` | `string` (UUID) | Lo genera el sistema |
+| `nombre` | `string` | Obligatorio, máximo **50 caracteres** (sin contar espacios al inicio o al final), único; se guarda en mayúsculas |
+| `activa` | `boolean` | Opcional, `true` por defecto |
+
+Consultar el catálogo exige sesión; crear, editar y eliminar exige rol
+`ADMINISTRADOR`. Si el nombre supera los 50 caracteres, tanto `POST` como
+`PATCH` responden `400`.
+
+Crear una plataforma (`POST /api/plataformas`, con `Authorization: Bearer <token>`):
+
+```json
+{ "nombre": "Netflix", "activa": true }
+```
+
+Respuesta `201`:
+
+```json
+{ "id": "7c1f5a3e-2b6d-4c8a-9e41-0d5f8a1b2c33", "nombre": "NETFLIX", "activa": true }
+```
+
+Errores frecuentes:
+
+| Código | Cuándo | Ejemplo de respuesta |
+|---|---|---|
+| `400` | Falta el nombre o pasa de 50 caracteres | `{ "error": "nombre no puede superar 50 caracteres" }` |
+| `409` | Ya existe una plataforma con ese nombre | `{ "error": "Ya existe una plataforma con nombre NETFLIX" }` |
 ---
 
 ## Estructura y por qué es así
