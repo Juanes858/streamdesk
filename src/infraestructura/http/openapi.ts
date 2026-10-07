@@ -32,12 +32,23 @@ const error = {
   required: ['error'],
 }
 
+const plataforma = {
+  type: 'object',
+  description: 'Catálogo de plataformas de streaming sobre las que se registran Cuentas (Netflix, Disney+, HBO Max...).',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    nombre: { type: 'string', example: 'NETFLIX' },
+    activa: { type: 'boolean', example: true },
+  },
+  required: ['id', 'nombre', 'activa'],
+}
+
 const cuenta = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
     usuarioId: { type: 'string', format: 'uuid' },
-    plataformaId: { type: 'string', example: 'NETFLIX' },
+    plataformaId: { type: 'string', format: 'uuid', description: 'Id de una Plataforma existente (ver GET /plataformas).' },
     correo: { type: 'string', format: 'email', example: 'cliente@correo.com' },
     fechaInicio: { type: 'string', format: 'date-time' },
     fechaFin: { type: 'string', format: 'date-time' },
@@ -90,6 +101,7 @@ export const openapi = {
     { name: 'Salud', description: 'Verificación de que el servicio responde.' },
     { name: 'Autenticación', description: 'Registro de usuarios, inicio de sesión y consulta del perfil propio.' },
     { name: 'Usuarios', description: 'Consulta, actualización y eliminación de usuarios.' },
+    { name: 'Plataformas', description: 'Catálogo de plataformas de streaming sobre las que se registran Cuentas.' },
     { name: 'Cuentas', description: 'Cuentas de plataformas asociadas a un usuario.' },
     { name: 'Tickets', description: 'Registro y seguimiento de solicitudes de soporte.' },
   ],
@@ -301,6 +313,80 @@ export const openapi = {
       },
     },
 
+    '/plataformas': {
+  post: {
+    tags: ['Plataformas'],
+    summary: 'Registrar una plataforma',
+    description: 'Solo un administrador puede registrar una plataforma. El nombre se normaliza a mayúsculas y es único.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' }, example: { nombre: 'NETFLIX' } } },
+    },
+    responses: {
+      201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+      400: respuestaError('Datos inválidos.', 'nombre requerido'),
+      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+      409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
+    },
+  },
+  get: {
+    tags: ['Plataformas'],
+    summary: 'Listar plataformas',
+    description: 'Cualquier sesión puede consultar el catálogo; lo necesita para registrar una Cuenta.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Catálogo de plataformas.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/PlataformaDTO' } } } } },
+      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+    },
+  },
+},
+
+'/plataformas/{id}': {
+  parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+  get: {
+    tags: ['Plataformas'],
+    summary: 'Obtener plataforma por id',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Plataforma encontrada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+    },
+  },
+  patch: {
+    tags: ['Plataformas'],
+    summary: 'Actualizar una plataforma',
+    description: 'Solo un administrador puede actualizar una plataforma.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarPlataformaDTO' } } },
+    },
+    responses: {
+      200: { description: 'Plataforma actualizada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+      400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+      409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
+    },
+  },
+  delete: {
+    tags: ['Plataformas'],
+    summary: 'Eliminar una plataforma',
+    description: 'Solo un administrador puede eliminarla. Falla si existen Cuentas que la referencian.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      204: { description: 'Plataforma eliminada.' },
+      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+    },
+  },
+},
+
     '/cuentas': {
       post: {
         tags: ['Cuentas'],
@@ -457,6 +543,7 @@ export const openapi = {
       SesionDTO: sesion,
       ErrorDTO: error,
       CuentaDTO: cuenta,
+      PlataformaDTO: plataforma,
       TicketDTO: ticket,
       ActualizarUsuarioDTO: {
         type: 'object',
@@ -472,7 +559,7 @@ export const openapi = {
         type: 'object',
         properties: {
           usuarioId: { type: 'string', format: 'uuid' },
-          plataformaId: { type: 'string', minLength: 1 },
+          plataformaId: { type: 'string', format: 'uuid', description: 'Id de una Plataforma existente.' },
           correo: { type: 'string', format: 'email' },
           clave: { type: 'string', format: 'password', minLength: 8 },
           fechaInicio: { type: 'string', format: 'date-time' },
@@ -483,7 +570,7 @@ export const openapi = {
       ActualizarCuentaDTO: {
         type: 'object',
         properties: {
-          plataformaId: { type: 'string', minLength: 1 },
+          plataformaId: { type: 'string', format: 'uuid', description: 'Id de una Plataforma existente.' },
           correo: { type: 'string', format: 'email' },
           clave: { type: 'string', format: 'password', minLength: 8 },
           fechaInicio: { type: 'string', format: 'date-time' },
@@ -491,6 +578,22 @@ export const openapi = {
           estado: { type: 'string', enum: ['ACTIVA', 'REPORTADA', 'VENCIDA'] },
         },
       },
+
+      RegistrarPlataformaDTO: {
+  type: 'object',
+  properties: {
+    nombre: { type: 'string', minLength: 1, example: 'NETFLIX' },
+    activa: { type: 'boolean', default: true },
+  },
+  required: ['nombre'],
+},
+ActualizarPlataformaDTO: {
+  type: 'object',
+  properties: {
+    nombre: { type: 'string', minLength: 1 },
+    activa: { type: 'boolean' },
+  },
+},
       CrearTicketDTO: {
         type: 'object',
         properties: {

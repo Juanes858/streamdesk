@@ -2,8 +2,8 @@ import { Router } from 'express'
 import { aCuentaDTO } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
-import { RegistrarCuenta, UsuarioCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
-import type { CuentaDAO, ServicioClaves, ServicioTokens, UsuarioDAO } from '../../../dominio/puertos'
+import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
+import type { CuentaDAO, PlataformaDAO, ServicioClaves, ServicioTokens, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles, exigirSesion } from './autenticacion'
 
 export interface DependenciasCuentas {
@@ -11,6 +11,7 @@ export interface DependenciasCuentas {
   usuarios: UsuarioDAO
   claves: ServicioClaves
   tokens: ServicioTokens
+  plataformas: PlataformaDAO
 }
 
 function validarRegistro(cuerpo: unknown): { usuarioId: string; plataformaId: string; correo: string; clave: string; fechaInicio: Date; fechaFin: Date } | string {
@@ -66,10 +67,11 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     try {
       const datos = validarRegistro(req.body)
       if (typeof datos === 'string') return void res.status(400).json({ error: datos })
-      const cuenta = await new RegistrarCuenta(deps.cuentas, deps.usuarios, deps.claves).ejecutar(datos)
+      const cuenta = await new RegistrarCuenta(deps.cuentas, deps.usuarios, deps.claves, deps.plataformas).ejecutar(datos)
       res.status(201).json(aCuentaDTO(cuenta))
     } catch (error) {
       if (error instanceof UsuarioCuentaNoExiste) return void res.status(404).json({ error: error.message })
+      if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
       next(error)
     }
   })
@@ -111,10 +113,11 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
       return void res.status(400).json({ error: typeof cambios === 'string' ? cambios : 'debe enviar cambios' })
     }
     try {
-      const cuenta = await new ActualizarCuenta(deps.cuentas, deps.claves).ejecutar(id, cambios)
+      const cuenta = await new ActualizarCuenta(deps.cuentas, deps.claves, deps.plataformas).ejecutar(id, cambios)
       res.json(aCuentaDTO(cuenta))
-    } catch (error) {
+        } catch (error) {
       if (error instanceof CuentaNoEncontrada) return void res.status(404).json({ error: error.message })
+      if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
       next(error)
     }
   })

@@ -9,7 +9,7 @@ Manizales. Node.js + TypeScript estricto, Express, Prisma y PostgreSQL.
 > producto convierte el escalamiento en una regla del sistema y no en un acto de
 > memoria de una persona. Ver `docs/vision-helpdesk-uam.md`.
 
-Estado actual: **autenticación, usuarios, cuentas de plataformas y tickets**.
+Estado actual: **autenticación, usuarios, cuentas de plataformas, plataformas y tickets**.
 El catálogo de SLA y el escalamiento automático todavía son capacidades futuras.
 
 ---
@@ -97,6 +97,11 @@ Todo cuelga del prefijo `/api`.
 | `GET` | `/api/usuarios/:id` | Consulta un usuario; requiere admin |
 | `PATCH` | `/api/usuarios/:id` | Actualiza datos de usuario; requiere admin |
 | `DELETE` | `/api/usuarios/:id` | Elimina un usuario; requiere admin |
+| `POST` | `/api/plataformas` | Registra una plataforma (`{ nombre, activa? }`); requiere admin |
+| `GET` | `/api/plataformas` | Lista el catálogo de plataformas; requiere token |
+| `GET` | `/api/plataformas/:id` | Consulta una plataforma; requiere token |
+| `PATCH` | `/api/plataformas/:id` | Actualiza nombre o estado de una plataforma; requiere admin |
+| `DELETE` | `/api/plataformas/:id` | Elimina una plataforma (falla si tiene cuentas asociadas); requiere admin |
 | `POST` | `/api/cuentas` | Registra una cuenta de plataforma; requiere admin |
 | `GET` | `/api/cuentas?usuarioId=:id` | Lista cuentas de un usuario; requiere token |
 | `GET` | `/api/cuentas/:id` | Consulta una cuenta; requiere token |
@@ -113,9 +118,9 @@ El token es un JWT HS256 con vigencia de 8 horas.
 
 Permisos actuales:
 
-- `ADMINISTRADOR`: crea y gestiona usuarios, cuentas y tickets.
+- `ADMINISTRADOR`: crea y gestiona usuarios, plataformas, cuentas y tickets.
 - `ASESOR`: consulta sus tickets asignados y puede actualizarlos o eliminarlos.
-- `CLIENTE`: inicia sesión, consulta su perfil, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
+- `CLIENTE`: inicia sesión, consulta su perfil, el catálogo de plataformas, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
 
 ---
 
