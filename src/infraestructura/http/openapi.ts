@@ -37,7 +37,7 @@ const plataforma = {
   description: 'Catálogo de plataformas de streaming sobre las que se registran Cuentas (Netflix, Disney+, HBO Max...).',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    nombre: { type: 'string', example: 'NETFLIX' },
+    nombre: { type: 'string', maxLength: 50, example: 'NETFLIX' },
     activa: { type: 'boolean', example: true },
   },
   required: ['id', 'nombre', 'activa'],
@@ -325,7 +325,7 @@ export const openapi = {
     },
     responses: {
       201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
-      400: respuestaError('Datos inválidos.', 'nombre requerido'),
+      400: respuestaError('Datos inválidos (nombre vacío o de más de 50 caracteres).', 'nombre no puede superar 50 caracteres'),
       401: respuestaError('Sesión requerida.', 'Sesión requerida'),
       403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
       409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
@@ -582,7 +582,7 @@ export const openapi = {
       RegistrarPlataformaDTO: {
   type: 'object',
   properties: {
-    nombre: { type: 'string', minLength: 1, example: 'NETFLIX' },
+    nombre: { type: 'string', minLength: 1, maxLength: 50, example: 'NETFLIX' },
     activa: { type: 'boolean', default: true },
   },
   required: ['nombre'],
@@ -590,7 +590,7 @@ export const openapi = {
 ActualizarPlataformaDTO: {
   type: 'object',
   properties: {
-    nombre: { type: 'string', minLength: 1 },
+    nombre: { type: 'string', minLength: 1, maxLength: 50 },
     activa: { type: 'boolean' },
   },
 },

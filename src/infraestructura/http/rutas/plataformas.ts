@@ -12,6 +12,10 @@ export interface DependenciasPlataformas {
   tokens: ServicioTokens
 }
 
+/** Largo máximo del nombre de una plataforma (KAN-52). Se mide sobre el nombre ya sin espacios sobrantes. */
+export const LARGO_MAXIMO_NOMBRE_PLATAFORMA = 50
+const MENSAJE_NOMBRE_LARGO = `nombre no puede superar ${LARGO_MAXIMO_NOMBRE_PLATAFORMA} caracteres`
+
 function idValido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
 }
@@ -19,6 +23,7 @@ function idValido(valor: unknown): valor is string {
 function validarRegistro(cuerpo: unknown): { nombre: string; activa?: boolean } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
   if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre requerido'
+  if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
   if (datos['activa'] !== undefined && typeof datos['activa'] !== 'boolean') return 'activa debe ser booleano'
   return { nombre: datos['nombre'], ...(datos['activa'] !== undefined && { activa: datos['activa'] as boolean }) }
 }
@@ -28,6 +33,7 @@ function validarCambios(cuerpo: unknown): { nombre?: string; activa?: boolean } 
   const cambios: { nombre?: string; activa?: boolean } = {}
   if (datos['nombre'] !== undefined) {
     if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre inválido'
+    if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
     cambios.nombre = datos['nombre']
   }
   if (datos['activa'] !== undefined) {
