@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { ActualizarTicket } from '../../../aplicacion/casos-uso/ActualizarTicket'
 import { AsesorTicketInvalido, CrearTicket, CuentaTicketNoExiste, CuentaTicketNoPertenece, UsuarioTicketNoExiste } from '../../../aplicacion/casos-uso/CrearTicket'
 import { EliminarTicket } from '../../../aplicacion/casos-uso/EliminarTicket'
+import { ListarMisTickets } from '../../../aplicacion/casos-uso/ListarMisTickets'
 import { ListarTickets } from '../../../aplicacion/casos-uso/ListarTickets'
 import { ObtenerTicket, TicketNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerTicket'
 import { ResumenTickets } from '../../../aplicacion/casos-uso/ResumenTickets'
@@ -143,6 +144,15 @@ export function rutasTickets(deps: DependenciasTickets): Router {
   rutas.get('/resumen', soloAdministrador, async (_req, res, next) => {
     try {
       res.json(await new ResumenTickets(deps.tickets).ejecutar())
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  rutas.get('/mios', sesion, async (_req, res, next) => {
+    const credencial = res.locals['credencial'] as { id: string }
+    try {
+      res.status(200).json(await new ListarMisTickets(deps.tickets).ejecutar(credencial.id))
     } catch (error) {
       next(error)
     }

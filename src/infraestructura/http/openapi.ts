@@ -533,6 +533,19 @@ export const openapi = {
       },
     },
 
+    '/tickets/mios': {
+      get: {
+        tags: ['Tickets'],
+        summary: 'Listar mis tickets',
+        description: 'Devuelve únicamente los tickets pertenecientes al usuario identificado por el token.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Tickets del usuario autenticado.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+
     '/tickets/{id}': {
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       get: {
