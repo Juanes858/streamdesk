@@ -253,6 +253,45 @@ export const openapi = {
       },
     },
 
+    '/auth/clave': {
+      patch: {
+        tags: ['Autenticación'],
+        summary: 'Cambiar propia clave',
+        description: 'Permite a un usuario autenticado cambiar su contraseña enviando la clave actual y la nueva.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  claveActual: { type: 'string', format: 'password', example: 'Admin12345!' },
+                  nuevaClave: { type: 'string', format: 'password', minLength: 8, example: 'NuevaClave123!' },
+                },
+                required: ['claveActual', 'nuevaClave'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Clave actualizada correctamente.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { mensaje: { type: 'string', example: 'Clave actualizada correctamente' } },
+                },
+              },
+            },
+          },
+          400: respuestaError('Clave actual incorrecta o nueva clave inválida.', 'La clave actual es incorrecta'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+    
     '/usuarios': {
       get: {
         tags: ['Usuarios'],
