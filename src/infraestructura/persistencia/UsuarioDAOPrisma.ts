@@ -7,6 +7,7 @@ const aDominio = (fila: FilaUsuario): Usuario => ({
   nombre: fila.nombre,
   correo: fila.correo,
   claveHash: fila.claveHash,
+  telefono: fila.telefono,
   rol: fila.rol as Rol,
   activo: fila.activo,
 })

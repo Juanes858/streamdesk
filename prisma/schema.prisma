@@ -15,16 +15,17 @@ enum Rol {
 }
 
 model Usuario {
-  id        String   @id @default(uuid())
-  nombre    String
-  correo    String   @unique
-  claveHash String
-  rol       Rol      @default(CLIENTE)
-  activo    Boolean  @default(true)
-  creadoEn  DateTime @default(now())
-  cuentas Cuenta[]
-  ticketsComoUsuario Ticket[] @relation("TicketUsuario")
-  ticketsComoAsesor Ticket[] @relation("TicketAsesor")
+  id                 String    @id @default(uuid())
+  nombre             String
+  correo             String    @unique
+  claveHash          String
+  telefono           String?
+  rol                Rol       @default(CLIENTE)
+  activo             Boolean   @default(true)
+  creadoEn           DateTime  @default(now())
+  cuentas            Cuenta[]
+  ticketsComoUsuario Ticket[]  @relation("TicketUsuario")
+  ticketsComoAsesor  Ticket[]  @relation("TicketAsesor")
 }
 
 model Plataforma {

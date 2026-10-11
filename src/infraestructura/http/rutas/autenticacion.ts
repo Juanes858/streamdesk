@@ -18,12 +18,22 @@ export interface LoginDTO {
 /** Validación de frontera: lo que entra por HTTP es `unknown` hasta que se prueba lo contrario. */
 function validarRegistro(cuerpo: unknown): RegistroDTO | string {
   const d = (cuerpo ?? {}) as Record<string, unknown>
-  if (typeof d['nombre'] !== 'string' || d['nombre'].trim().length < 2) return 'nombre requerido (mínimo 2 caracteres)'
+  if (typeof d['nombre'] !== 'string' || d['nombre'].trim().length < 2) return 'nombre requerido (minimo 2 caracteres)'
   if (typeof d['correo'] !== 'string' || !CORREO.test(d['correo'].trim())) return 'correo inválido'
-  if (typeof d['clave'] !== 'string' || d['clave'].length < 8) return 'clave requerida (mínimo 8 caracteres)'
+  if (typeof d['clave'] !== 'string' || d['clave'].length < 8) return 'clave requerida (minimo 8 caracteres)'
+  if (d['telefono'] !== undefined && typeof d['telefono'] !== 'string') return 'telefono inválido'
   const rol: unknown = d['rol'] ?? 'CLIENTE'
   if (!esRol(rol)) return 'rol inválido'
-  return { nombre: d['nombre'], correo: d['correo'], clave: d['clave'], rol: rol satisfies Rol }
+  const resultado: RegistroDTO = {
+    nombre: d['nombre'],
+    correo: d['correo'],
+    clave: d['clave'],
+    rol: rol satisfies Rol,
+  }
+  if (typeof d['telefono'] === 'string') {
+    resultado.telefono = d['telefono']
+  }
+  return resultado
 }
 
 function validarLogin(cuerpo: unknown): LoginDTO | null {

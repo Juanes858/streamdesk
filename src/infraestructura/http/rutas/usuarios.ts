@@ -4,7 +4,7 @@ import { EliminarUsuario } from '../../../aplicacion/casos-uso/EliminarUsuario'
 import { ListarUsuarios } from '../../../aplicacion/casos-uso/ListarUsuarios'
 import { ObtenerUsuario, UsuarioNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
-import { esRol } from '../../../dominio/modelo/Usuario'
+import { esRol, aUsuarioDTO } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles } from './autenticacion'
 
@@ -21,6 +21,7 @@ function idValido(valor: unknown): valor is string {
 function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
   const cambios: Record<string, unknown> = {}
+
   if (datos['nombre'] !== undefined) {
     if (typeof datos['nombre'] !== 'string' || datos['nombre'].trim().length < 2) return 'nombre inválido'
     cambios['nombre'] = datos['nombre']
@@ -30,8 +31,12 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
     cambios['correo'] = datos['correo']
   }
   if (datos['clave'] !== undefined) {
-    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8) return 'clave requerida (mínimo 8 caracteres)'
+    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8) return 'clave requerida (minimo 8 caracteres)'
     cambios['clave'] = datos['clave']
+  }
+  if (datos['telefono'] !== undefined) {
+    if (datos['telefono'] !== null && typeof datos['telefono'] !== 'string') return 'telefono inválido'
+    cambios['telefono'] = datos['telefono']
   }
   if (datos['rol'] !== undefined) {
     if (!esRol(datos['rol'])) return 'rol inválido'
@@ -41,6 +46,7 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
     if (typeof datos['activo'] !== 'boolean') return 'activo debe ser booleano'
     cambios['activo'] = datos['activo']
   }
+
   return cambios
 }
 
@@ -75,7 +81,7 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
         return void res.status(400).json({ error: typeof cambios === 'string' ? cambios : 'debe enviar cambios' })
       }
       const usuario = await new ActualizarUsuario(deps.usuarios, deps.claves).ejecutar(req.params['id'], cambios)
-      res.json({ id: usuario.id, nombre: usuario.nombre, correo: usuario.correo, rol: usuario.rol, activo: usuario.activo })
+res.json(aUsuarioDTO(usuario))
     } catch (error) {
       if (error instanceof UsuarioNoEncontrado) return void res.status(404).json({ error: error.message })
       if (error instanceof CorreoYaRegistrado) return void res.status(409).json({ error: error.message })
