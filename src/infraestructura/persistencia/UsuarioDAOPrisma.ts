@@ -32,10 +32,16 @@ export class UsuarioDAOPrisma implements UsuarioDAO {
     return fila && aDominio(fila)
   }
 
-  async listarTodos(): Promise<Usuario[]> {
-    const filas = await this.prisma.usuario.findMany()
-    return filas.map(aDominio)
+  async listarTodos(rol?: Rol): Promise<Usuario[]> {
+  const opciones: Parameters<typeof this.prisma.usuario.findMany>[0] = {}
+
+  if (rol) {
+    opciones.where = { rol: rol as $Enums.Rol }
   }
+
+  const filas = await this.prisma.usuario.findMany(opciones)
+  return filas.map(aDominio)
+}
 
   async actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario> {
     return aDominio(await this.prisma.usuario.update({

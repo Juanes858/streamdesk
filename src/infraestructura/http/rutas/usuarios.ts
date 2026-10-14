@@ -5,6 +5,7 @@ import { ListarUsuarios } from '../../../aplicacion/casos-uso/ListarUsuarios'
 import { ObtenerUsuario, UsuarioNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
 import { esRol, aUsuarioDTO } from '../../../dominio/modelo/Usuario'
+import type { Rol } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles } from './autenticacion'
 
@@ -55,9 +56,19 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
   // Todo el router de administración de usuarios queda reservado al admin.
   const sesion = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
-  rutas.get('/', sesion, async (_req, res, next) => {
+  rutas.get('/', sesion, async (req, res, next) => {
     try {
-      res.json(await new ListarUsuarios(deps.usuarios).ejecutar())
+      const rolQuery = req.query['rol']
+      let rol: Rol | undefined = undefined
+
+      if (rolQuery !== undefined) {
+        if (typeof rolQuery !== 'string' || !esRol(rolQuery)) {
+          return void res.status(400).json({ error: 'rol inválido' })
+        }
+        rol = rolQuery
+      }
+
+      res.json(await new ListarUsuarios(deps.usuarios).ejecutar(rol))
     } catch (error) {
       next(error)
     }
@@ -81,7 +92,7 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
         return void res.status(400).json({ error: typeof cambios === 'string' ? cambios : 'debe enviar cambios' })
       }
       const usuario = await new ActualizarUsuario(deps.usuarios, deps.claves).ejecutar(req.params['id'], cambios)
-res.json(aUsuarioDTO(usuario))
+      res.json(aUsuarioDTO(usuario))
     } catch (error) {
       if (error instanceof UsuarioNoEncontrado) return void res.status(404).json({ error: error.message })
       if (error instanceof CorreoYaRegistrado) return void res.status(409).json({ error: error.message })
