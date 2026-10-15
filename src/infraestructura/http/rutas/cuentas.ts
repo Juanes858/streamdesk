@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { aCuentaDTO } from '../../../dominio/modelo/Cuenta'
+import { aCuentaDTO, esEstadoCuenta } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
