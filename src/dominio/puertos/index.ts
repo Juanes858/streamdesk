@@ -39,7 +39,7 @@ export interface CuentaDAO {
   // La aplicación depende de este contrato, no de CuentaDAOPrisma.
   guardar(cuenta: CuentaNueva): Promise<Cuenta>
   porId(id: string): Promise<Cuenta | null>
-  porUsuario(usuarioId: string): Promise<Cuenta[]>
+  porUsuario(usuarioId: string, estado?: EstadoCuenta): Promise<Cuenta[]>
   actualizar(id: string, cambios: CambiosCuenta): Promise<Cuenta>
   eliminar(id: string): Promise<void>
 }
