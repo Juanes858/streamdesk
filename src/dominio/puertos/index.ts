@@ -10,11 +10,10 @@ import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../modelo/Usuar
 import type { Plataforma, PlataformaNueva } from '../modelo/Plataforma'
 
 export interface UsuarioDAO {
-  // Estos contratos permiten probar los casos de uso sin Express, Prisma o BD.
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
-  listarTodos(): Promise<Usuario[]>
+  listarTodos(rol?: Rol, q?: string): Promise<Usuario[]>
   actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario>
   eliminar(id: string): Promise<void>
 }

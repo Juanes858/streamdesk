@@ -5,6 +5,7 @@ import { ListarUsuarios } from '../../../aplicacion/casos-uso/ListarUsuarios'
 import { ObtenerUsuario, UsuarioNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
 import { esRol } from '../../../dominio/modelo/Usuario'
+import type { Rol } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles } from './autenticacion'
 
@@ -49,9 +50,28 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
   // Todo el router de administración de usuarios queda reservado al admin.
   const sesion = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
-  rutas.get('/', sesion, async (_req, res, next) => {
+  rutas.get('/', sesion, async (req, res, next) => {
     try {
-      res.json(await new ListarUsuarios(deps.usuarios).ejecutar())
+      const rolQuery = req.query['rol']
+      const qQuery = req.query['q']
+      let rol: Rol | undefined = undefined
+      let q: string | undefined = undefined
+
+      if (rolQuery !== undefined) {
+        if (typeof rolQuery !== 'string' || !esRol(rolQuery)) {
+          return void res.status(400).json({ error: 'rol inválido' })
+        }
+        rol = rolQuery
+      }
+
+      if (qQuery !== undefined) {
+        if (typeof qQuery !== 'string') {
+          return void res.status(400).json({ error: 'parámetro q inválido' })
+        }
+        q = qQuery
+      }
+
+      res.json(await new ListarUsuarios(deps.usuarios).ejecutar(rol, q))
     } catch (error) {
       next(error)
     }
