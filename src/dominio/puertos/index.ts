@@ -14,6 +14,7 @@ export interface UsuarioDAO {
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
   listarTodos(rol?: Rol, q?: string): Promise<Usuario[]>
+  obtenerResumenPorRol(): Promise<Record<Rol, number>>
   actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario>
   eliminar(id: string): Promise<void>
 }

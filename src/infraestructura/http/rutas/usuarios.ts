@@ -13,6 +13,7 @@ import {
   UsuarioNoEncontrado,
 } from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
+import { ResumenUsuariosPorRol } from '../../../aplicacion/casos-uso/ResumenUsuariosPorRol'
 import type { Rol } from '../../../dominio/modelo/Usuario'
 import { esRol } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
@@ -90,6 +91,15 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
       }
 
       res.json(await new ListarUsuarios(deps.usuarios).ejecutar(rol, q))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  // IMPORTANTE: Definir /resumen antes de /:id para que Express no lo interprete como un ID
+  rutas.get('/resumen', sesion, async (_req, res, next) => {
+    try {
+      res.json(await new ResumenUsuariosPorRol(deps.usuarios).ejecutar())
     } catch (error) {
       next(error)
     }
