@@ -1,11 +1,11 @@
 import { aPlataformaDTO, type PlataformaDTO } from '../../dominio/modelo/Plataforma'
-import type { PlataformaDAO } from '../../dominio/puertos'
+import type { PlataformaDAO, FiltrosPlataforma } from '../../dominio/puertos'
 
 export class ListarPlataformas {
   constructor(private readonly plataformas: PlataformaDAO) {}
 
-  async ejecutar(): Promise<PlataformaDTO[]> {
-    const todas = await this.plataformas.listarTodas()
+    async ejecutar(filtros: FiltrosPlataforma = {}): Promise<PlataformaDTO[]> {
+    const todas = await this.plataformas.listarTodas(filtros)
     return todas.map(aPlataformaDTO)
   }
 }

@@ -56,9 +56,14 @@ export function rutasPlataformas(deps: DependenciasPlataformas): Router {
     }
   })
 
-  rutas.get('/', sesion, async (_req, res, next) => {
+    rutas.get('/', sesion, async (req, res, next) => {
     try {
-      res.json(await new ListarPlataformas(deps.plataformas).ejecutar())
+      const crudo = req.query['activa']
+      if (crudo !== undefined && crudo !== 'true' && crudo !== 'false') {
+        return void res.status(400).json({ error: 'activa debe ser true o false' })
+      }
+      const filtros = crudo === undefined ? {} : { activa: crudo === 'true' }
+      res.json(await new ListarPlataformas(deps.plataformas).ejecutar(filtros))
     } catch (error) {
       next(error)
     }
