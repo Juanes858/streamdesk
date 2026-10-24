@@ -1,4 +1,4 @@
-import type { PrismaClient, Cuenta as FilaCuenta, Prisma, $Enums } from './generado/index'
+import { PrismaClient, $Enums, type Prisma, type Cuenta as FilaCuenta } from './generado/index'
 import type { Cuenta, CuentaNueva, EstadoCuenta } from '../../dominio/modelo/Cuenta'
 import type { CambiosCuenta, CuentaDAO } from '../../dominio/puertos'
 
@@ -18,9 +18,11 @@ export class CuentaDAOPrisma implements CuentaDAO {
   constructor(private readonly prisma: PrismaClient) {}
 
   async guardar(cuenta: CuentaNueva): Promise<Cuenta> {
-    return aDominio(await this.prisma.cuenta.create({
-      data: { ...cuenta, estado: cuenta.estado as $Enums.EstadoCuenta },
-    }))
+    return aDominio(
+      await this.prisma.cuenta.create({
+        data: { ...cuenta, estado: cuenta.estado as $Enums.EstadoCuenta },
+      }),
+    )
   }
 
   async porId(id: string): Promise<Cuenta | null> {
@@ -33,16 +35,35 @@ export class CuentaDAOPrisma implements CuentaDAO {
     return filas.map(aDominio)
   }
 
+  async porVencer(fechaLimite: Date): Promise<Cuenta[]> {
+    const ahora = new Date()
+    const filas = await this.prisma.cuenta.findMany({
+      where: {
+        estado: $Enums.EstadoCuenta.ACTIVA,
+        fechaFin: {
+          gte: ahora,
+          lte: fechaLimite,
+        },
+      },
+      orderBy: {
+        fechaFin: 'asc',
+      },
+    })
+    return filas.map(aDominio)
+  }
+
   async actualizar(id: string, cambios: CambiosCuenta): Promise<Cuenta> {
-    // El hash puede cambiar, pero el DTO público siempre lo elimina mediante
-    // aCuentaDTO antes de entregar la respuesta HTTP.
-    return aDominio(await this.prisma.cuenta.update({
-      where: { id },
-      data: {
-        ...cambios,
-        ...(cambios.estado !== undefined && { estado: cambios.estado as $Enums.EstadoCuenta }),
-      } as Prisma.CuentaUpdateInput,
-    }))
+    return aDominio(
+      await this.prisma.cuenta.update({
+        where: { id },
+        data: {
+          ...cambios,
+          ...(cambios.estado !== undefined && {
+            estado: cambios.estado as $Enums.EstadoCuenta,
+          }),
+        } as Prisma.CuentaUpdateInput,
+      }),
+    )
   }
 
   async eliminar(id: string): Promise<void> {
