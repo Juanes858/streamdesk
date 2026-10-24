@@ -3,6 +3,7 @@ import { aCuentaDTO } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { ListarCuentasPorVencer } from '../../../aplicacion/casos-uso/ListarCuentasPorVencer'
+import { RevisarVencimiento } from '../../../aplicacion/casos-uso/RevisarVencimiento'
 import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
 import type { CuentaDAO, PlataformaDAO, ServicioClaves, ServicioTokens, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles, exigirSesion } from './autenticacion'
@@ -111,13 +112,15 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     try {
       const id = req.params['id']
       if (typeof id !== 'string') return void res.status(400).json({ error: 'id requerido' })
-      const cuenta = await deps.cuentas.porId(id)
+      
+      const cuenta = await new RevisarVencimiento(deps.cuentas).ejecutar(id)
       if (!cuenta) return void res.status(404).json({ error: 'Cuenta no encontrada' })
+
       const credencial = res.locals['credencial'] as { id: string; rol: string }
       if (credencial.rol !== 'ADMINISTRADOR' && cuenta.usuarioId !== credencial.id) {
         return void res.status(403).json({ error: 'No puede consultar esta cuenta' })
       }
-      res.json(aCuentaDTO(cuenta))
+      res.json(cuenta)
     } catch (error) {
       next(error)
     }
