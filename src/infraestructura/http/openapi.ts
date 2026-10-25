@@ -315,78 +315,78 @@ export const openapi = {
     },
 
     '/plataformas': {
-  post: {
-    tags: ['Plataformas'],
-    summary: 'Registrar una plataforma',
-    description: 'Solo un administrador puede registrar una plataforma. El nombre se normaliza a mayúsculas y es único.',
-    security: [{ bearerAuth: [] }],
-    requestBody: {
-      required: true,
-      content: { 'application/json': { schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' }, example: { nombre: 'NETFLIX' } } },
+      post: {
+        tags: ['Plataformas'],
+        summary: 'Registrar una plataforma',
+        description: 'Solo un administrador puede registrar una plataforma. El nombre se normaliza a mayúsculas y es único.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' }, example: { nombre: 'NETFLIX' } } },
+        },
+        responses: {
+          201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+          400: respuestaError('Datos inválidos.', 'nombre requerido'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+          409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
+        },
+      },
+      get: {
+        tags: ['Plataformas'],
+        summary: 'Listar plataformas',
+        description: 'Cualquier sesión puede consultar el catálogo; lo necesita para registrar una Cuenta.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Catálogo de plataformas.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/PlataformaDTO' } } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
     },
-    responses: {
-      201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
-      400: respuestaError('Datos inválidos.', 'nombre requerido'),
-      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
-      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
-      409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
-    },
-  },
-  get: {
-    tags: ['Plataformas'],
-    summary: 'Listar plataformas',
-    description: 'Cualquier sesión puede consultar el catálogo; lo necesita para registrar una Cuenta.',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Catálogo de plataformas.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/PlataformaDTO' } } } } },
-      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
-    },
-  },
-},
 
-'/plataformas/{id}': {
-  parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-  get: {
-    tags: ['Plataformas'],
-    summary: 'Obtener plataforma por id',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Plataforma encontrada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
-      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
-      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+    '/plataformas/{id}': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      get: {
+        tags: ['Plataformas'],
+        summary: 'Obtener plataforma por id',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Plataforma encontrada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+        },
+      },
+      patch: {
+        tags: ['Plataformas'],
+        summary: 'Actualizar una plataforma',
+        description: 'Solo un administrador puede actualizar una plataforma.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarPlataformaDTO' } } },
+        },
+        responses: {
+          200: { description: 'Plataforma actualizada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
+          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+          404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+          409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
+        },
+      },
+      delete: {
+        tags: ['Plataformas'],
+        summary: 'Eliminar una plataforma',
+        description: 'Solo un administrador puede eliminarla. Falla si existen Cuentas que la referencian.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          204: { description: 'Plataforma eliminada.' },
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
+          404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
+        },
+      },
     },
-  },
-  patch: {
-    tags: ['Plataformas'],
-    summary: 'Actualizar una plataforma',
-    description: 'Solo un administrador puede actualizar una plataforma.',
-    security: [{ bearerAuth: [] }],
-    requestBody: {
-      required: true,
-      content: { 'application/json': { schema: { $ref: '#/components/schemas/ActualizarPlataformaDTO' } } },
-    },
-    responses: {
-      200: { description: 'Plataforma actualizada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
-      400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
-      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
-      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
-      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
-      409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
-    },
-  },
-  delete: {
-    tags: ['Plataformas'],
-    summary: 'Eliminar una plataforma',
-    description: 'Solo un administrador puede eliminarla. Falla si existen Cuentas que la referencian.',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      204: { description: 'Plataforma eliminada.' },
-      401: respuestaError('Sesión requerida.', 'Sesión requerida'),
-      403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
-      404: respuestaError('Plataforma no encontrada.', 'No existe una plataforma con id ...'),
-    },
-  },
-},
 
     '/cuentas': {
       post: {
@@ -404,7 +404,7 @@ export const openapi = {
         },
         responses: {
           201: { description: 'Cuenta creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
-          400: respuestaError('Datos inválidos.', 'clave requerida (mínimo 8 caracteres)'),
+          400: respuestaError('Datos inválidos o vigencia superior a 2 años.', 'la cuenta no puede durar más de 2 años'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           404: respuestaError('El cliente no existe.', 'El cliente ... no existe'),
         },
@@ -413,10 +413,14 @@ export const openapi = {
         tags: ['Cuentas'],
         summary: 'Listar cuentas de un cliente',
         security: [{ bearerAuth: [] }],
-        parameters: [{ name: 'usuarioId', in: 'query', required: false, schema: { type: 'string', format: 'uuid' }, description: 'Opcional para ADMINISTRADOR; los demás usuarios consultan su propia cuenta.' }],
+        parameters: [
+          { name: 'usuarioId', in: 'query', required: false, schema: { type: 'string', format: 'uuid' }, description: 'Opcional para ADMINISTRADOR; los demás usuarios consultan su propia cuenta.' },
+          { name: 'estado', in: 'query', required: false, schema: { type: 'string', enum: ['ACTIVA', 'REPORTADA', 'VENCIDA'] }, description: 'Filtra las cuentas por estado.' },
+          { name: 'usuarioId', in: 'query', required: false, schema: { type: 'string', format: 'uuid' }, description: 'Opcional para ADMINISTRADOR; los demás usuarios consultan su propia cuenta.' }
+        ],
         responses: {
           200: { description: 'Cuentas del cliente.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/CuentaDTO' } } } } },
-          400: respuestaError('Falta usuarioId.', 'usuarioId requerido'),
+          400: respuestaError('Falta usuarioId o el estado es inválido.', 'estado inválido'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
         },
       },
@@ -445,7 +449,7 @@ export const openapi = {
         },
         responses: {
           200: { description: 'Cuenta actualizada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/CuentaDTO' } } } },
-          400: respuestaError('Cambios inválidos.', 'debe enviar cambios'),
+          400: respuestaError('Datos inválidos o vigencia superior a 2 años.', 'la cuenta no puede durar más de 2 años'),
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
           404: respuestaError('Cuenta no encontrada.', 'No existe la cuenta ...'),
@@ -461,6 +465,23 @@ export const openapi = {
           401: respuestaError('Sesión requerida.', 'Sesión requerida'),
           403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
           404: respuestaError('Cuenta no encontrada.', 'No existe la cuenta ...'),
+        },
+      },
+    },
+
+    '/cuentas/{id}/tickets': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      get: {
+        tags: ['Cuentas'],
+        summary: 'Listar los tickets de una cuenta',
+        description: 'Lo puede consultar el dueño de la cuenta o un administrador.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Tickets de la cuenta.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TicketDTO' } } } } },
+          400: respuestaError('Falta el id de la cuenta.', 'id requerido'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+          403: respuestaError('La cuenta pertenece a otro usuario.', 'No puede consultar los tickets de esta cuenta'),
+          404: respuestaError('Cuenta no encontrada.', 'Cuenta no encontrada'),
         },
       },
     },
@@ -616,7 +637,7 @@ export const openapi = {
           correo: { type: 'string', format: 'email' },
           clave: { type: 'string', format: 'password', minLength: 8 },
           fechaInicio: { type: 'string', format: 'date-time' },
-          fechaFin: { type: 'string', format: 'date-time' },
+          fechaFin: { type: 'string', format: 'date-time', description: 'Debe ser posterior a fechaInicio y no superar 2 años desde ella.' },
         },
         required: ['usuarioId', 'plataformaId', 'correo', 'clave', 'fechaInicio', 'fechaFin'],
       },
@@ -627,26 +648,26 @@ export const openapi = {
           correo: { type: 'string', format: 'email' },
           clave: { type: 'string', format: 'password', minLength: 8 },
           fechaInicio: { type: 'string', format: 'date-time' },
-          fechaFin: { type: 'string', format: 'date-time' },
+          fechaFin: { type: 'string', format: 'date-time', description: 'Debe ser posterior a fechaInicio y no superar 2 años desde ella.' },
           estado: { type: 'string', enum: ['ACTIVA', 'REPORTADA', 'VENCIDA'] },
         },
       },
 
       RegistrarPlataformaDTO: {
-  type: 'object',
-  properties: {
-    nombre: { type: 'string', minLength: 1, example: 'NETFLIX' },
-    activa: { type: 'boolean', default: true },
-  },
-  required: ['nombre'],
-},
-ActualizarPlataformaDTO: {
-  type: 'object',
-  properties: {
-    nombre: { type: 'string', minLength: 1 },
-    activa: { type: 'boolean' },
-  },
-},
+        type: 'object',
+        properties: {
+          nombre: { type: 'string', minLength: 1, example: 'NETFLIX' },
+          activa: { type: 'boolean', default: true },
+        },
+        required: ['nombre'],
+      },
+      ActualizarPlataformaDTO: {
+        type: 'object',
+        properties: {
+          nombre: { type: 'string', minLength: 1 },
+          activa: { type: 'boolean' },
+        },
+      },
       CrearTicketDTO: {
         type: 'object',
         properties: {
