@@ -27,3 +27,12 @@ export function aCuentaDTO(cuenta: Cuenta): CuentaDTO {
 export function esEstadoCuenta(valor: unknown): valor is EstadoCuenta {
   return ESTADOS_CUENTA.includes(valor as EstadoCuenta)
 }
+
+export const MAX_ANIOS_CUENTA = 2
+
+/** true si la vigencia supera el máximo permitido (años de calendario). */
+export function excedeDuracionMaxima(inicio: Date, fin: Date): boolean {
+  const limite = new Date(inicio)
+  limite.setUTCFullYear(limite.getUTCFullYear() + MAX_ANIOS_CUENTA)
+  return fin > limite
+}
