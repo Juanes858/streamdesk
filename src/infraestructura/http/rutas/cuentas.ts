@@ -58,6 +58,7 @@ function validarCambios(cuerpo: unknown): Parameters<ActualizarCuenta['ejecutar'
     if (cambios.fechaFin <= cambios.fechaInicio) return 'fechaFin inválida'
     if (excedeDuracionMaxima(cambios.fechaInicio, cambios.fechaFin)) return 'la cuenta no puede durar más de 2 años'
   }
+  return cambios
 }
 
 export function rutasCuentas(deps: DependenciasCuentas): Router {
