@@ -3,8 +3,9 @@ import { aCuentaDTO, excedeDuracionMaxima } from '../../../dominio/modelo/Cuenta
 import { ActualizarCuenta, CuentaNoEncontrada, FechasCuentaInvalidas } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
-import type { CuentaDAO, PlataformaDAO, ServicioClaves, ServicioTokens, UsuarioDAO } from '../../../dominio/puertos'
+import type { CuentaDAO, PlataformaDAO, ServicioClaves, ServicioTokens, TicketDAO, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles, exigirSesion } from './autenticacion'
+import { ListarTickets } from '../../../aplicacion/casos-uso/ListarTickets'
 
 export interface DependenciasCuentas {
   cuentas: CuentaDAO
@@ -12,6 +13,7 @@ export interface DependenciasCuentas {
   claves: ServicioClaves
   tokens: ServicioTokens
   plataformas: PlataformaDAO
+  tickets: TicketDAO
 }
 
 function validarRegistro(cuerpo: unknown): { usuarioId: string; plataformaId: string; correo: string; clave: string; fechaInicio: Date; fechaFin: Date } | string {
@@ -104,6 +106,22 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
         return void res.status(403).json({ error: 'No puede consultar esta cuenta' })
       }
       res.json(aCuentaDTO(cuenta))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  rutas.get('/:id/tickets', sesion, async (req, res, next) => {
+    try {
+      const id = req.params['id']
+      if (typeof id !== 'string' || !id.trim()) return void res.status(400).json({ error: 'id requerido' })
+      const cuenta = await deps.cuentas.porId(id)
+      if (!cuenta) return void res.status(404).json({ error: 'Cuenta no encontrada' })
+      const credencial = res.locals['credencial'] as { id: string; rol: string }
+      if (credencial.rol !== 'ADMINISTRADOR' && cuenta.usuarioId !== credencial.id) {
+        return void res.status(403).json({ error: 'No puede consultar los tickets de esta cuenta' })
+      }
+      res.json(await new ListarTickets(deps.tickets).ejecutar({ cuentaId: id }))
     } catch (error) {
       next(error)
     }
