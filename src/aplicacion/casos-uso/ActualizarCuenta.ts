@@ -1,12 +1,13 @@
 import type { Cuenta } from '../../dominio/modelo/Cuenta'
 import type { CambiosCuenta, CuentaDAO, ServicioClaves, PlataformaDAO } from '../../dominio/puertos'
 import { PlataformaCuentaNoExiste } from './RegistrarCuenta'
+import { excedeDuracionMaxima } from '../../dominio/modelo/Cuenta'
 
-
+export class FechasCuentaInvalidas extends Error { }
 export class CuentaNoEncontrada extends Error {
   constructor(id: string) {
     super(`No existe la cuenta ${id}`)
-    
+
   }
 }
 
@@ -24,10 +25,19 @@ export class ActualizarCuenta {
     private readonly cuentas: CuentaDAO,
     private readonly claves: ServicioClaves,
     private readonly plataformas: PlataformaDAO,
-  ) {}
+  ) { }
 
   async ejecutar(id: string, datos: ActualizacionCuentaDTO): Promise<Cuenta> {
-    if (!(await this.cuentas.porId(id))) throw new CuentaNoEncontrada(id)
+    const actual = await this.cuentas.porId(id)
+    if (!actual) throw new CuentaNoEncontrada(id)
+    if (datos.fechaInicio !== undefined || datos.fechaFin !== undefined) {
+      const inicio = datos.fechaInicio ?? actual.fechaInicio
+      const fin = datos.fechaFin ?? actual.fechaFin
+      if (fin <= inicio) throw new FechasCuentaInvalidas('fechaFin inválida')
+      if (excedeDuracionMaxima(inicio, fin)) {
+        throw new FechasCuentaInvalidas('la cuenta no puede durar más de 2 años')
+      }
+    }
     const cambios: CambiosCuenta = {
       ...(datos.plataformaId !== undefined && { plataformaId: datos.plataformaId.trim() }),
       ...(datos.correo !== undefined && { correo: datos.correo.trim().toLowerCase() }),
@@ -36,7 +46,7 @@ export class ActualizarCuenta {
       ...(datos.fechaFin !== undefined && { fechaFin: datos.fechaFin }),
       ...(datos.estado !== undefined && { estado: datos.estado }),
     }
-        if (datos.plataformaId !== undefined && !(await this.plataformas.porId(datos.plataformaId))) {
+    if (datos.plataformaId !== undefined && !(await this.plataformas.porId(datos.plataformaId))) {
       throw new PlataformaCuentaNoExiste(datos.plataformaId)
     }
     return this.cuentas.actualizar(id, cambios)
