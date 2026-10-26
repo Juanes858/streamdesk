@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { aCuentaDTO, esEstadoCuenta } from '../../../dominio/modelo/Cuenta'
-import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
+import { aCuentaDTO, esEstadoCuenta, excedeDuracionMaxima } from '../../../dominio/modelo/Cuenta'
+import { ActualizarCuenta, CuentaNoEncontrada, FechasCuentaInvalidas } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { ListarCuentasPorVencer } from '../../../aplicacion/casos-uso/ListarCuentasPorVencer'
 import { RevisarVencimiento } from '../../../aplicacion/casos-uso/RevisarVencimiento'
@@ -26,6 +26,7 @@ function validarRegistro(cuerpo: unknown): { usuarioId: string; plataformaId: st
   const fechaFin = new Date(typeof datos['fechaFin'] === 'string' ? datos['fechaFin'] : '')
   if (Number.isNaN(fechaInicio.getTime())) return 'fechaInicio inválida'
   if (Number.isNaN(fechaFin.getTime()) || fechaFin <= fechaInicio) return 'fechaFin inválida'
+  if (excedeDuracionMaxima(fechaInicio, fechaFin)) return 'la cuenta no puede durar más de 2 años'
   return { usuarioId: datos['usuarioId'], plataformaId: datos['plataformaId'], correo: datos['correo'], clave: datos['clave'], fechaInicio, fechaFin }
 }
 
@@ -55,7 +56,10 @@ function validarCambios(cuerpo: unknown): Parameters<ActualizarCuenta['ejecutar'
       cambios[campo] = fecha
     }
   }
-  if (cambios.fechaInicio && cambios.fechaFin && cambios.fechaFin <= cambios.fechaInicio) return 'fechaFin inválida'
+  if (cambios.fechaInicio && cambios.fechaFin) {
+    if (cambios.fechaFin <= cambios.fechaInicio) return 'fechaFin inválida'
+    if (excedeDuracionMaxima(cambios.fechaInicio, cambios.fechaFin)) return 'la cuenta no puede durar más de 2 años'
+  }
   return cambios
 }
 
@@ -148,6 +152,7 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
       const cuenta = await new ActualizarCuenta(deps.cuentas, deps.claves, deps.plataformas).ejecutar(id, cambios)
       res.json(aCuentaDTO(cuenta))
     } catch (error) {
+      if (error instanceof FechasCuentaInvalidas) return void res.status(400).json({ error: error.message })
       if (error instanceof CuentaNoEncontrada) return void res.status(404).json({ error: error.message })
       if (error instanceof PlataformaCuentaNoExiste) return void res.status(404).json({ error: error.message })
       next(error)
