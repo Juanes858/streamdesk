@@ -30,10 +30,15 @@ export class CuentaDAOPrisma implements CuentaDAO {
     return fila && aDominio(fila)
   }
 
-  async porUsuario(usuarioId: string): Promise<Cuenta[]> {
-    const filas = await this.prisma.cuenta.findMany({ where: { usuarioId } })
-    return filas.map(aDominio)
-  }
+  async porUsuario(usuarioId: string, estado?: EstadoCuenta): Promise<Cuenta[]> {
+  const filas = await this.prisma.cuenta.findMany({
+    where: {
+      usuarioId,
+      ...(estado !== undefined && { estado: estado as $Enums.EstadoCuenta }),
+    },
+  })
+  return filas.map(aDominio)
+}
 
   async porVencer(fechaLimite: Date): Promise<Cuenta[]> {
     const ahora = new Date()

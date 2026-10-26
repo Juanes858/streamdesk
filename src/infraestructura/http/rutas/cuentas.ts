@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { aCuentaDTO } from '../../../dominio/modelo/Cuenta'
+import { aCuentaDTO, esEstadoCuenta } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { ListarCuentasPorVencer } from '../../../aplicacion/casos-uso/ListarCuentasPorVencer'
@@ -108,11 +108,36 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     }
   })
 
+  rutas.get('/', sesion, async (req, res, next) => {
+    try {
+      const credencial = res.locals['credencial'] as { id: string; rol: string }
+      const estado = req.query['estado']
+
+      if (estado !== undefined && !esEstadoCuenta(estado)) {
+        return void res.status(400).json({ error: 'estado inválido' })
+      }
+
+      const usuarioId = credencial.rol === 'ADMINISTRADOR'
+        ? typeof req.query['usuarioId'] === 'string'
+          ? req.query['usuarioId']
+          : undefined
+        : credencial.id
+
+      if (!usuarioId) return void res.status(400).json({ error: 'usuarioId requerido' })
+
+      res.json((await deps.cuentas.porUsuario(usuarioId, estado)).map(aCuentaDTO))
+    } catch (error) {
+      next(error)
+    }
+  })
+
   rutas.get('/:id', sesion, async (req, res, next) => {
     try {
       const id = req.params['id']
-      if (typeof id !== 'string') return void res.status(400).json({ error: 'id requerido' })
-      
+      if (typeof id !== 'string' || !id.trim()) {
+        return void res.status(400).json({ error: 'id requerido' })
+      }
+
       const cuenta = await new RevisarVencimiento(deps.cuentas).ejecutar(id)
       if (!cuenta) return void res.status(404).json({ error: 'Cuenta no encontrada' })
 
@@ -120,11 +145,22 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
       if (credencial.rol !== 'ADMINISTRADOR' && cuenta.usuarioId !== credencial.id) {
         return void res.status(403).json({ error: 'No puede consultar esta cuenta' })
       }
-      res.json(cuenta)
+
+      res.json(aCuentaDTO(cuenta))
     } catch (error) {
       next(error)
     }
   })
+    }
+    const usuarioId = credencial.rol === 'ADMINISTRADOR'
+      ? typeof req.query['usuarioId'] === 'string' ? req.query['usuarioId'] : undefined
+      : credencial.id
+    if (!usuarioId) return void res.status(400).json({ error: 'usuarioId requerido' })
+    res.json((await deps.cuentas.porUsuario(usuarioId, estado)).map(aCuentaDTO))
+  } catch (error) {
+    next(error)
+  }
+})
 
   rutas.patch('/:id', administrador, async (req, res, next) => {
     const id = req.params['id']

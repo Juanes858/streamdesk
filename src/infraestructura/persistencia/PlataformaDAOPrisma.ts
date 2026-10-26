@@ -1,4 +1,4 @@
-import type { PlataformaDAO, CambiosPlataforma } from '../../dominio/puertos'
+import type { PlataformaDAO, CambiosPlataforma, FiltrosPlataforma, CambiosCuenta } from '../../dominio/puertos'
 import type { Plataforma, PlataformaNueva } from '../../dominio/modelo/Plataforma'
 import type { PrismaClient, Plataforma as FilaPlataforma } from './generado/index'
 
@@ -6,6 +6,7 @@ import type { PrismaClient, Plataforma as FilaPlataforma } from './generado/inde
 const aDominio = (fila: FilaPlataforma): Plataforma => ({
   id: fila.id,
   nombre: fila.nombre,
+  descripcion: fila.descripcion ?? null,
   activa: fila.activa,
 })
 
@@ -26,8 +27,9 @@ export class PlataformaDAOPrisma implements PlataformaDAO {
     return fila && aDominio(fila)
   }
 
-  async listarTodas(): Promise<Plataforma[]> {
-    const filas = await this.prisma.plataforma.findMany({ orderBy: { nombre: 'asc' } })
+    async listarTodas(filtros: FiltrosPlataforma = {}): Promise<Plataforma[]> {
+    const where = filtros.activa === undefined ? {} : { activa: filtros.activa }
+    const filas = await this.prisma.plataforma.findMany({ where, orderBy: { nombre: 'asc' } })
     return filas.map(aDominio)
   }
 
