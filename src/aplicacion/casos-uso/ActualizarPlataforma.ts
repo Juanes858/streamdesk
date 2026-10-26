@@ -5,6 +5,7 @@ import { PlataformaYaRegistrada } from './RegistrarPlataforma'
 
 export interface ActualizacionPlataformaDTO {
   nombre?: string
+  descripcion?: string | null
   activa?: boolean
 }
 
@@ -21,6 +22,7 @@ export class ActualizarPlataforma {
       if (existente && existente.id !== id) throw new PlataformaYaRegistrada(nombre)
       cambios.nombre = nombre
     }
+    if (datos.descripcion !== undefined) cambios.descripcion = datos.descripcion
     if (datos.activa !== undefined) cambios.activa = datos.activa
 
     return this.plataformas.actualizar(id, cambios)

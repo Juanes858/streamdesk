@@ -8,6 +8,7 @@ export interface Usuario {
   nombre: string
   correo: string
   claveHash: string
+  telefono?: string | null
   rol: Rol
   activo: boolean
 }
@@ -23,6 +24,7 @@ export interface UsuarioDTO {
   id: string
   nombre: string
   correo: string
+  telefono?: string | null
   rol: Rol
   activo: boolean
 }
@@ -31,6 +33,6 @@ export function esRol(valor: unknown): valor is Rol {
   return ROLES.includes(valor as Rol)
 }
 
-export function aUsuarioDTO({ id, nombre, correo, rol, activo }: Usuario): UsuarioDTO {
-  return { id, nombre, correo, rol, activo }
+export function aUsuarioDTO({ id, nombre, correo, telefono, rol, activo }: Usuario): UsuarioDTO {
+  return { id, nombre, correo, telefono: telefono ?? null, rol, activo }
 }
