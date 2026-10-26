@@ -20,21 +20,34 @@ function idValido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
 }
 
-function validarRegistro(cuerpo: unknown): { nombre: string; activa?: boolean } | string {
+function validarRegistro(cuerpo: unknown): { nombre: string; descripcion?: string | null; activa?: boolean } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
+  const descripcion = datos['descripcion']
   if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre requerido'
   if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
+  if (descripcion !== undefined && descripcion !== null && typeof descripcion !== 'string') {
+    return 'descripcion debe ser texto'
+  }
   if (datos['activa'] !== undefined && typeof datos['activa'] !== 'boolean') return 'activa debe ser booleano'
-  return { nombre: datos['nombre'], ...(datos['activa'] !== undefined && { activa: datos['activa'] as boolean }) }
+  return {
+    nombre: datos['nombre'],
+    ...(descripcion !== undefined && { descripcion }),
+    ...(datos['activa'] !== undefined && { activa: datos['activa'] as boolean }),
+  }
 }
 
-function validarCambios(cuerpo: unknown): { nombre?: string; activa?: boolean } | string {
+function validarCambios(cuerpo: unknown): { nombre?: string; descripcion?: string | null; activa?: boolean } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
-  const cambios: { nombre?: string; activa?: boolean } = {}
+  const descripcion = datos['descripcion']
+  const cambios: { nombre?: string; descripcion?: string | null; activa?: boolean } = {}
   if (datos['nombre'] !== undefined) {
     if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre inválido'
     if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
     cambios.nombre = datos['nombre']
+  }
+  if (descripcion !== undefined) {
+    if (descripcion !== null && typeof descripcion !== 'string') return 'descripcion debe ser texto'
+    cambios.descripcion = descripcion
   }
   if (datos['activa'] !== undefined) {
     if (typeof datos['activa'] !== 'boolean') return 'activa debe ser booleano'

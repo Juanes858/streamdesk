@@ -38,9 +38,10 @@ const plataforma = {
   properties: {
     id: { type: 'string', format: 'uuid' },
     nombre: { type: 'string', maxLength: 50, example: 'NETFLIX' },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean', example: true },
   },
-  required: ['id', 'nombre', 'activa'],
+  required: ['id', 'nombre', 'descripcion', 'activa'],
 }
 
 const cuenta = {
@@ -322,7 +323,12 @@ export const openapi = {
     security: [{ bearerAuth: [] }],
     requestBody: {
       required: true,
-      content: { 'application/json': { schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' }, example: { nombre: 'NETFLIX' } } },
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' },
+          example: { nombre: 'NETFLIX', descripcion: 'Servicio de series y películas' },
+        },
+      },
     },
     responses: {
       201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
@@ -638,6 +644,7 @@ export const openapi = {
   type: 'object',
   properties: {
     nombre: { type: 'string', minLength: 1, maxLength: 50, example: 'NETFLIX' },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean', default: true },
   },
   required: ['nombre'],
@@ -646,6 +653,7 @@ ActualizarPlataformaDTO: {
   type: 'object',
   properties: {
     nombre: { type: 'string', minLength: 1, maxLength: 50 },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean' },
   },
 },
