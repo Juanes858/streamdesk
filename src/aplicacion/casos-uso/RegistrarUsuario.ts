@@ -12,6 +12,7 @@ export interface RegistroDTO {
   nombre: string
   correo: string
   clave: string
+  telefono?: string
   rol: Rol
 }
 
@@ -27,10 +28,11 @@ export class RegistrarUsuario {
     const correo = datos.correo.trim().toLowerCase()
     if (await this.usuarios.porCorreo(correo)) throw new CorreoYaRegistrado(correo)
 
-    return this.usuarios.guardar({
+   return this.usuarios.guardar({
       nombre: datos.nombre.trim(),
       correo,
       claveHash: await this.claves.cifrar(datos.clave),
+      telefono: datos.telefono?.trim() || null,
       rol: datos.rol,
       activo: true,
     })

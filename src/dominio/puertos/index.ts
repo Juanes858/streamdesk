@@ -15,7 +15,7 @@ export interface UsuarioDAO {
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
-  listarTodos(): Promise<Usuario[]>
+  listarTodos(rol?: Rol): Promise<Usuario []>
   actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario>
   eliminar(id: string): Promise<void>
 }
