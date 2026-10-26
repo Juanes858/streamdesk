@@ -12,23 +12,42 @@ export interface DependenciasPlataformas {
   tokens: ServicioTokens
 }
 
+/** Largo máximo del nombre de una plataforma (KAN-52). Se mide sobre el nombre ya sin espacios sobrantes. */
+export const LARGO_MAXIMO_NOMBRE_PLATAFORMA = 50
+const MENSAJE_NOMBRE_LARGO = `nombre no puede superar ${LARGO_MAXIMO_NOMBRE_PLATAFORMA} caracteres`
+
 function idValido(valor: unknown): valor is string {
   return typeof valor === 'string' && valor.trim().length > 0
 }
 
-function validarRegistro(cuerpo: unknown): { nombre: string; activa?: boolean } | string {
+function validarRegistro(cuerpo: unknown): { nombre: string; descripcion?: string | null; activa?: boolean } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
+  const descripcion = datos['descripcion']
   if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre requerido'
+  if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
+  if (descripcion !== undefined && descripcion !== null && typeof descripcion !== 'string') {
+    return 'descripcion debe ser texto'
+  }
   if (datos['activa'] !== undefined && typeof datos['activa'] !== 'boolean') return 'activa debe ser booleano'
-  return { nombre: datos['nombre'], ...(datos['activa'] !== undefined && { activa: datos['activa'] as boolean }) }
+  return {
+    nombre: datos['nombre'],
+    ...(descripcion !== undefined && { descripcion }),
+    ...(datos['activa'] !== undefined && { activa: datos['activa'] as boolean }),
+  }
 }
 
-function validarCambios(cuerpo: unknown): { nombre?: string; activa?: boolean } | string {
+function validarCambios(cuerpo: unknown): { nombre?: string; descripcion?: string | null; activa?: boolean } | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
-  const cambios: { nombre?: string; activa?: boolean } = {}
+  const descripcion = datos['descripcion']
+  const cambios: { nombre?: string; descripcion?: string | null; activa?: boolean } = {}
   if (datos['nombre'] !== undefined) {
     if (typeof datos['nombre'] !== 'string' || !datos['nombre'].trim()) return 'nombre inválido'
+    if (datos['nombre'].trim().length > LARGO_MAXIMO_NOMBRE_PLATAFORMA) return MENSAJE_NOMBRE_LARGO
     cambios.nombre = datos['nombre']
+  }
+  if (descripcion !== undefined) {
+    if (descripcion !== null && typeof descripcion !== 'string') return 'descripcion debe ser texto'
+    cambios.descripcion = descripcion
   }
   if (datos['activa'] !== undefined) {
     if (typeof datos['activa'] !== 'boolean') return 'activa debe ser booleano'
@@ -56,9 +75,14 @@ export function rutasPlataformas(deps: DependenciasPlataformas): Router {
     }
   })
 
-  rutas.get('/', sesion, async (_req, res, next) => {
+    rutas.get('/', sesion, async (req, res, next) => {
     try {
-      res.json(await new ListarPlataformas(deps.plataformas).ejecutar())
+      const crudo = req.query['activa']
+      if (crudo !== undefined && crudo !== 'true' && crudo !== 'false') {
+        return void res.status(400).json({ error: 'activa debe ser true o false' })
+      }
+      const filtros = crudo === undefined ? {} : { activa: crudo === 'true' }
+      res.json(await new ListarPlataformas(deps.plataformas).ejecutar(filtros))
     } catch (error) {
       next(error)
     }

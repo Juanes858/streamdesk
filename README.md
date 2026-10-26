@@ -82,6 +82,62 @@ Si el puerto de `.env` es distinto de `3001`, reemplaza ese valor en la URL de
 Swagger y en el campo `servers` de `openapi.ts` cuando la API se publique detrás
 de un host o prefijo diferente.
 
+## Flujo de Autenticación
+
+La API utiliza tokens de acceso **JWT (JSON Web Tokens)** firmados mediante el algoritmo HS256 con una vigencia de 8 horas.
+
+1. **Registro de Usuarios (`POST /api/auth/registro`):**
+   - Requiere una sesión activa con el rol `ADMINISTRADOR`.
+   - Recibe `nombre`, `correo`, `clave` y opcionalmente `rol` (por defecto `CLIENTE`).
+   - La contraseña se encripta con `bcrypt` antes de guardarse.
+
+2. **Inicio de Sesión (`POST /api/auth/login`):**
+   - El usuario envía sus credenciales (`correo` y `clave`).
+   - Si son válidas, el servidor responde con los datos del perfil y el **token JWT**.
+
+3. **Uso del Token:**
+   - Para consumir endpoints protegidos, incluye el encabezado HTTP:
+     ```text
+     Authorization: Bearer <TOKEN_JWT>
+     ```
+   - En **Swagger UI**, haz clic en el botón **Authorize** arriba a la derecha, pega el token y confirma.
+
+4. **Expiración:**
+   - Si el token expira (tras 8 horas) o es inválido, la API responde con `401 Unauthorized`.
+   - Se debe volver a iniciar sesión en `/api/auth/login` para obtener un token nuevo.
+
+---
+
+## Matriz de Permisos por Rol
+
+| Módulo | Método | Endpoint | ADMINISTRADOR | ASESOR | CLIENTE | Notas de Acceso |
+| :--- | :---: | :--- | :---: | :---: | :---: | :--- |
+| **Público** | `GET` | `/api/salud` | ✅ | ✅ | ✅ | Sin autenticación |
+| | `GET` | `/api/docs` | ✅ | ✅ | ✅ | Documentación Swagger UI |
+| **Auth** | `POST` | `/api/auth/registro` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `POST` | `/api/auth/login` | ✅ | ✅ | ✅ | Público |
+| | `GET` | `/api/auth/perfil` | ✅ | ✅ | ✅ | Requiere token |
+| **Usuarios** | `GET` | `/api/usuarios` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `PATCH` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Plataformas** | `POST` | `/api/plataformas` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/plataformas` | ✅ | ✅ | ✅ | Requiere token |
+| | `GET` | `/api/plataformas/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/plataformas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/plataformas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Cuentas** | `POST` | `/api/cuentas` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/cuentas` | ✅ | ✅ | ✅ | Cliente ve solo sus cuentas |
+| | `GET` | `/api/cuentas/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/cuentas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/cuentas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Tickets** | `POST` | `/api/tickets` | ✅ | ✅ | ✅ | Requiere token |
+| | `GET` | `/api/tickets` | ✅ | ✅ | ✅ | Cliente ve sus tickets; Asesor los asignados |
+| | `GET` | `/api/tickets/resumen` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/tickets/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/tickets/:id` | ✅ | ✅ | ❌ | Admin y Asesor |
+| | `DELETE` | `/api/tickets/:id` | ✅ | ✅ | ❌ | Admin y Asesor |
+
 ## API
 
 Todo cuelga del prefijo `/api`.
@@ -269,6 +325,43 @@ Permisos actuales:
 - `ASESOR`: consulta sus tickets asignados y puede actualizarlos o eliminarlos.
 - `CLIENTE`: inicia sesión, consulta su perfil, el catálogo de plataformas, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
 
+### Plataforma
+
+Una **Plataforma** es un servicio de streaming del catálogo del sistema (por
+ejemplo `NETFLIX`, `DISNEY+` o `HBO MAX`). Sirve para que las cuentas se
+registren siempre contra un valor controlado y no contra texto libre. Una
+plataforma tiene muchas **Cuentas** (`Cuenta.plataformaId` es una llave
+foránea a `Plataforma.id`) y cada cuenta pertenece a una sola plataforma, por
+eso una plataforma con cuentas asociadas no se puede eliminar.
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `id` | `string` (UUID) | Lo genera el sistema |
+| `nombre` | `string` | Obligatorio, máximo **50 caracteres** (sin contar espacios al inicio o al final), único; se guarda en mayúsculas |
+| `activa` | `boolean` | Opcional, `true` por defecto |
+
+Consultar el catálogo exige sesión; crear, editar y eliminar exige rol
+`ADMINISTRADOR`. Si el nombre supera los 50 caracteres, tanto `POST` como
+`PATCH` responden `400`.
+
+Crear una plataforma (`POST /api/plataformas`, con `Authorization: Bearer <token>`):
+
+```json
+{ "nombre": "Netflix", "activa": true }
+```
+
+Respuesta `201`:
+
+```json
+{ "id": "7c1f5a3e-2b6d-4c8a-9e41-0d5f8a1b2c33", "nombre": "NETFLIX", "activa": true }
+```
+
+Errores frecuentes:
+
+| Código | Cuándo | Ejemplo de respuesta |
+|---|---|---|
+| `400` | Falta el nombre o pasa de 50 caracteres | `{ "error": "nombre no puede superar 50 caracteres" }` |
+| `409` | Ya existe una plataforma con ese nombre | `{ "error": "Ya existe una plataforma con nombre NETFLIX" }` |
 ---
 ## Cuenta
 

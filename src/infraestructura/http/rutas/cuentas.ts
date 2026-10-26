@@ -1,7 +1,9 @@
 import { Router } from 'express'
-import { aCuentaDTO, excedeDuracionMaxima } from '../../../dominio/modelo/Cuenta'
+import { aCuentaDTO, esEstadoCuenta, excedeDuracionMaxima } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada, FechasCuentaInvalidas } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
+import { ListarCuentasPorVencer } from '../../../aplicacion/casos-uso/ListarCuentasPorVencer'
+import { RevisarVencimiento } from '../../../aplicacion/casos-uso/RevisarVencimiento'
 import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
 import type { CuentaDAO, PlataformaDAO, ServicioClaves, ServicioTokens, TicketDAO, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles, exigirSesion } from './autenticacion'
@@ -65,7 +67,6 @@ function validarCambios(cuerpo: unknown): Parameters<ActualizarCuenta['ejecutar'
 
 export function rutasCuentas(deps: DependenciasCuentas): Router {
   const rutas = Router()
-  // Leer cuentas depende de la identidad del token; escribirlas depende del rol.
   const sesion = exigirSesion(deps.tokens)
   const administrador = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
@@ -82,14 +83,40 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     }
   })
 
+  rutas.get('/por-vencer', administrador, async (req, res, next) => {
+    try {
+      let dias = 7
+      const diasQuery = req.query['dias']
+      if (diasQuery !== undefined) {
+        if (typeof diasQuery !== 'string' || Number.isNaN(Number(diasQuery)) || Number(diasQuery) < 0) {
+          return void res.status(400).json({ error: 'días inválido' })
+        }
+        dias = Number(diasQuery)
+      }
+      res.json(await new ListarCuentasPorVencer(deps.cuentas).ejecutar(dias))
+    } catch (error) {
+      next(error)
+    }
+  })
+
   rutas.get('/', sesion, async (req, res, next) => {
     try {
       const credencial = res.locals['credencial'] as { id: string; rol: string }
+      const estado = req.query['estado']
+
+      if (estado !== undefined && !esEstadoCuenta(estado)) {
+        return void res.status(400).json({ error: 'estado inválido' })
+      }
+
       const usuarioId = credencial.rol === 'ADMINISTRADOR'
-        ? typeof req.query['usuarioId'] === 'string' ? req.query['usuarioId'] : undefined
+        ? typeof req.query['usuarioId'] === 'string'
+          ? req.query['usuarioId']
+          : undefined
         : credencial.id
+
       if (!usuarioId) return void res.status(400).json({ error: 'usuarioId requerido' })
-      res.json((await deps.cuentas.porUsuario(usuarioId)).map(aCuentaDTO))
+
+      res.json((await deps.cuentas.porUsuario(usuarioId, estado)).map(aCuentaDTO))
     } catch (error) {
       next(error)
     }
@@ -98,14 +125,19 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
   rutas.get('/:id', sesion, async (req, res, next) => {
     try {
       const id = req.params['id']
-      if (typeof id !== 'string') return void res.status(400).json({ error: 'id requerido' })
-      const cuenta = await deps.cuentas.porId(id)
+      if (typeof id !== 'string' || !id.trim()) {
+        return void res.status(400).json({ error: 'id requerido' })
+      }
+
+      const cuenta = await new RevisarVencimiento(deps.cuentas).ejecutar(id)
       if (!cuenta) return void res.status(404).json({ error: 'Cuenta no encontrada' })
+
       const credencial = res.locals['credencial'] as { id: string; rol: string }
       if (credencial.rol !== 'ADMINISTRADOR' && cuenta.usuarioId !== credencial.id) {
         return void res.status(403).json({ error: 'No puede consultar esta cuenta' })
       }
-      res.json(aCuentaDTO(cuenta))
+
+      res.json(cuenta)
     } catch (error) {
       next(error)
     }
