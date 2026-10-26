@@ -38,10 +38,11 @@ const plataforma = {
   description: 'Catálogo de plataformas de streaming sobre las que se registran Cuentas (Netflix, Disney+, HBO Max...).',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    nombre: { type: 'string', example: 'NETFLIX' },
+    nombre: { type: 'string', maxLength: 50, example: 'NETFLIX' },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean', example: true },
   },
-  required: ['id', 'nombre', 'activa'],
+  required: ['id', 'nombre', 'descripcion', 'activa'],
 }
 
 const cuenta = {
@@ -323,11 +324,16 @@ export const openapi = {
     security: [{ bearerAuth: [] }],
     requestBody: {
       required: true,
-      content: { 'application/json': { schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' }, example: { nombre: 'NETFLIX' } } },
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/RegistrarPlataformaDTO' },
+          example: { nombre: 'NETFLIX', descripcion: 'Servicio de series y películas' },
+        },
+      },
     },
     responses: {
       201: { description: 'Plataforma creada.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PlataformaDTO' } } } },
-      400: respuestaError('Datos inválidos.', 'nombre requerido'),
+      400: respuestaError('Datos inválidos (nombre vacío o de más de 50 caracteres).', 'nombre no puede superar 50 caracteres'),
       401: respuestaError('Sesión requerida.', 'Sesión requerida'),
       403: respuestaError('Se requiere rol ADMINISTRADOR.', 'Permisos insuficientes'),
       409: respuestaError('Ya existe una plataforma con ese nombre.', 'Ya existe una plataforma con nombre NETFLIX'),
@@ -338,8 +344,10 @@ export const openapi = {
     summary: 'Listar plataformas',
     description: 'Cualquier sesión puede consultar el catálogo; lo necesita para registrar una Cuenta.',
     security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'activa', in: 'query', required: false, description: 'true: solo activas. false: solo inactivas.', schema: { type: 'boolean' } }],
     responses: {
       200: { description: 'Catálogo de plataformas.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/PlataformaDTO' } } } } },
+                400: respuestaError('Valor de activa inválido.', 'activa debe ser true o false'),
       401: respuestaError('Sesión requerida.', 'Sesión requerida'),
     },
   },
@@ -637,7 +645,8 @@ export const openapi = {
       RegistrarPlataformaDTO: {
   type: 'object',
   properties: {
-    nombre: { type: 'string', minLength: 1, example: 'NETFLIX' },
+    nombre: { type: 'string', minLength: 1, maxLength: 50, example: 'NETFLIX' },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean', default: true },
   },
   required: ['nombre'],
@@ -645,7 +654,8 @@ export const openapi = {
 ActualizarPlataformaDTO: {
   type: 'object',
   properties: {
-    nombre: { type: 'string', minLength: 1 },
+    nombre: { type: 'string', minLength: 1, maxLength: 50 },
+    descripcion: { type: 'string', nullable: true, example: 'Servicio de series y películas' },
     activa: { type: 'boolean' },
   },
 },

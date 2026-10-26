@@ -10,6 +10,7 @@ export class PlataformaYaRegistrada extends Error {
 /** Datos de entrada, ya validados en la frontera HTTP. */
 export interface RegistroPlataformaDTO {
   nombre: string
+  descripcion?: string | null
   activa?: boolean
 }
 
@@ -24,6 +25,7 @@ export class RegistrarPlataforma {
 
     return this.plataformas.guardar({
       nombre,
+      ...(datos.descripcion !== undefined && { descripcion: datos.descripcion }),
       activa: datos.activa ?? true,
     })
   }

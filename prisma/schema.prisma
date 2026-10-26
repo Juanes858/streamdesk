@@ -29,10 +29,11 @@ model Usuario {
 }
 
 model Plataforma {
-  id      String   @id @default(uuid())
-  nombre  String   @unique
-  activa  Boolean  @default(true)
-  cuentas Cuenta[]
+  id          String   @id @default(uuid())
+  nombre      String   @unique
+  descripcion String?
+  activa      Boolean  @default(true)
+  cuentas     Cuenta[]
 }
 
 enum EstadoCuenta {
