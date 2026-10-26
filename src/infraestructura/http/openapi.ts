@@ -337,8 +337,10 @@ export const openapi = {
     summary: 'Listar plataformas',
     description: 'Cualquier sesión puede consultar el catálogo; lo necesita para registrar una Cuenta.',
     security: [{ bearerAuth: [] }],
+            parameters: [{ name: 'activa', in: 'query', required: false, description: 'true: solo activas. false: solo inactivas.', schema: { type: 'boolean' } }],
     responses: {
       200: { description: 'Catálogo de plataformas.', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/PlataformaDTO' } } } } },
+                400: respuestaError('Valor de activa inválido.', 'activa debe ser true o false'),
       401: respuestaError('Sesión requerida.', 'Sesión requerida'),
     },
   },
