@@ -14,6 +14,7 @@ export interface ActualizacionDTO {
   nombre?: string
   correo?: string
   clave?: string
+  telefono?: string | null
   rol?: Rol
   activo?: boolean
 }
@@ -21,7 +22,7 @@ export interface ActualizacionDTO {
 export class ActualizarUsuario {
   constructor(
     private readonly usuarios: UsuarioDAO,
-    private readonly claves: ServicioClaves,
+    private readonly claves: ServicioClaves
   ) {}
 
   async ejecutar(
@@ -45,6 +46,8 @@ export class ActualizarUsuario {
     return this.usuarios.actualizar(idTarget, {
       ...(datos.nombre !== undefined && { nombre: datos.nombre.trim() }),
       ...(correo !== undefined && { correo }),
+      ...(datos.clave !== undefined && { claveHash: await this.claves.cifrar(datos.clave) }),
+      ...(datos.telefono !== undefined && { telefono: datos.telefono ? datos.telefono.trim() : null }),
       ...(datos.clave !== undefined && {
         claveHash: await this.claves.cifrar(datos.clave),
       }),

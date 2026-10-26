@@ -13,9 +13,9 @@ import {
   UsuarioNoEncontrado,
 } from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
-import { ResumenUsuariosPorRol } from '../../../aplicacion/casos-uso/ResumenUsuariosPorRol'
+import { aUsuarioDTO, esRol } from '../../../dominio/modelo/Usuario'
 import type { Rol } from '../../../dominio/modelo/Usuario'
-import { esRol } from '../../../dominio/modelo/Usuario'
+import { ResumenUsuariosPorRol } from '../../../aplicacion/casos-uso/ResumenUsuariosPorRol'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles } from './autenticacion'
 
@@ -32,6 +32,7 @@ function idValido(valor: unknown): valor is string {
 function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
   const cambios: Record<string, unknown> = {}
+
   if (datos['nombre'] !== undefined) {
     if (
       typeof datos['nombre'] !== 'string' ||
@@ -49,9 +50,17 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
     cambios['correo'] = datos['correo']
   }
   if (datos['clave'] !== undefined) {
-    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8)
+  if (datos['clave'] !== undefined) {
+    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8) {
       return 'clave requerida (mínimo 8 caracteres)'
+    }
     cambios['clave'] = datos['clave']
+  }
+    cambios['clave'] = datos['clave']
+  }
+  if (datos['telefono'] !== undefined) {
+    if (datos['telefono'] !== null && typeof datos['telefono'] !== 'string') return 'telefono inválido'
+    cambios['telefono'] = datos['telefono']
   }
   if (datos['rol'] !== undefined) {
     if (!esRol(datos['rol'])) return 'rol inválido'
@@ -61,6 +70,7 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
     if (typeof datos['activo'] !== 'boolean') return 'activo debe ser booleano'
     cambios['activo'] = datos['activo']
   }
+
   return cambios
 }
 
@@ -132,24 +142,16 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
               typeof cambios === 'string' ? cambios : 'debe enviar cambios',
           })
       }
-
-      const idEjecutor =
-        (res.locals['credencial'] as { id?: string } | undefined)?.id ??
-        (res.locals['usuario'] as { id?: string } | undefined)?.id ??
-        (req as unknown as { usuario?: { id: string } }).usuario?.id
+      const idEjecutor = (
+        res.locals['credencial'] as { id: string }
+      ).id
 
       const usuario = await new ActualizarUsuario(
         deps.usuarios,
         deps.claves,
       ).ejecutar(req.params['id'], cambios, idEjecutor)
 
-      res.json({
-        id: usuario.id,
-        nombre: usuario.nombre,
-        correo: usuario.correo,
-        rol: usuario.rol,
-        activo: usuario.activo,
-      })
+      res.json(aUsuarioDTO(usuario))
     } catch (error) {
       if (error instanceof AutoDesactivacionNoPermitida)
         return void res.status(400).json({ error: error.message })
