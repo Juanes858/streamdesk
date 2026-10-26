@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { aCuentaDTO } from '../../../dominio/modelo/Cuenta'
+import { aCuentaDTO, esEstadoCuenta } from '../../../dominio/modelo/Cuenta'
 import { ActualizarCuenta, CuentaNoEncontrada } from '../../../aplicacion/casos-uso/ActualizarCuenta'
 import { EliminarCuenta } from '../../../aplicacion/casos-uso/EliminarCuenta'
 import { RegistrarCuenta, UsuarioCuentaNoExiste, PlataformaCuentaNoExiste } from '../../../aplicacion/casos-uso/RegistrarCuenta'
@@ -89,21 +89,22 @@ export function rutasCuentas(deps: DependenciasCuentas): Router {
     }
   })
 
-  rutas.get('/:id', sesion, async (req, res, next) => {
-    try {
-      const id = req.params['id']
-      if (typeof id !== 'string') return void res.status(400).json({ error: 'id requerido' })
-      const cuenta = await deps.cuentas.porId(id)
-      if (!cuenta) return void res.status(404).json({ error: 'Cuenta no encontrada' })
-      const credencial = res.locals['credencial'] as { id: string; rol: string }
-      if (credencial.rol !== 'ADMINISTRADOR' && cuenta.usuarioId !== credencial.id) {
-        return void res.status(403).json({ error: 'No puede consultar esta cuenta' })
-      }
-      res.json(aCuentaDTO(cuenta))
-    } catch (error) {
-      next(error)
+  rutas.get('/', sesion, async (req, res, next) => {
+  try {
+    const credencial = res.locals['credencial'] as { id: string; rol: string }
+    const estado = req.query['estado']
+    if (estado !== undefined && !esEstadoCuenta(estado)) {
+      return void res.status(400).json({ error: 'estado inválido' })
     }
-  })
+    const usuarioId = credencial.rol === 'ADMINISTRADOR'
+      ? typeof req.query['usuarioId'] === 'string' ? req.query['usuarioId'] : undefined
+      : credencial.id
+    if (!usuarioId) return void res.status(400).json({ error: 'usuarioId requerido' })
+    res.json((await deps.cuentas.porUsuario(usuarioId, estado)).map(aCuentaDTO))
+  } catch (error) {
+    next(error)
+  }
+})
 
   rutas.patch('/:id', administrador, async (req, res, next) => {
     const id = req.params['id']
