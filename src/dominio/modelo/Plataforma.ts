@@ -7,7 +7,7 @@ export interface Plataforma {
 }
 
 /** Una plataforma que todavía no existe: el DAO asigna el id al guardarla. */
-export type PlataformaNueva = Omit<Plataforma, 'id'>
+export type PlataformaNueva = Omit<Plataforma, 'id' | 'descripcion'> & { descripcion?: string | null }
 
 /**
  * A diferencia de Cuenta, Plataforma no tiene campos sensibles que ocultar,

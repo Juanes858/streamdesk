@@ -25,7 +25,7 @@ export class RegistrarPlataforma {
 
     return this.plataformas.guardar({
       nombre,
-      descripcion: datos.descripcion ?? null,
+      ...(datos.descripcion !== undefined && { descripcion: datos.descripcion }),
       activa: datos.activa ?? true,
     })
   }
