@@ -1,9 +1,20 @@
 import { Router } from 'express'
-import { ActualizarUsuario } from '../../../aplicacion/casos-uso/ActualizarUsuario'
-import { EliminarUsuario } from '../../../aplicacion/casos-uso/EliminarUsuario'
+import {
+  ActualizarUsuario,
+  AutoDesactivacionNoPermitida,
+} from '../../../aplicacion/casos-uso/ActualizarUsuario'
+import {
+  AutoEliminacionNoPermitida,
+  EliminarUsuario,
+} from '../../../aplicacion/casos-uso/EliminarUsuario'
 import { ListarUsuarios } from '../../../aplicacion/casos-uso/ListarUsuarios'
-import { ObtenerUsuario, UsuarioNoEncontrado } from '../../../aplicacion/casos-uso/ObtenerUsuario'
+import {
+  ObtenerUsuario,
+  UsuarioNoEncontrado,
+} from '../../../aplicacion/casos-uso/ObtenerUsuario'
 import { CorreoYaRegistrado } from '../../../aplicacion/casos-uso/RegistrarUsuario'
+import { ResumenUsuariosPorRol } from '../../../aplicacion/casos-uso/ResumenUsuariosPorRol'
+import type { Rol } from '../../../dominio/modelo/Usuario'
 import { esRol } from '../../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../../dominio/puertos'
 import { exigirRoles } from './autenticacion'
@@ -22,15 +33,24 @@ function validarCambios(cuerpo: unknown): Record<string, unknown> | string {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
   const cambios: Record<string, unknown> = {}
   if (datos['nombre'] !== undefined) {
-    if (typeof datos['nombre'] !== 'string' || datos['nombre'].trim().length < 2) return 'nombre inválido'
+    if (
+      typeof datos['nombre'] !== 'string' ||
+      datos['nombre'].trim().length < 2
+    )
+      return 'nombre inválido'
     cambios['nombre'] = datos['nombre']
   }
   if (datos['correo'] !== undefined) {
-    if (typeof datos['correo'] !== 'string' || !/^\S+@\S+\.\S+$/.test(datos['correo'])) return 'correo inválido'
+    if (
+      typeof datos['correo'] !== 'string' ||
+      !/^\S+@\S+\.\S+$/.test(datos['correo'])
+    )
+      return 'correo inválido'
     cambios['correo'] = datos['correo']
   }
   if (datos['clave'] !== undefined) {
-    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8) return 'clave requerida (mínimo 8 caracteres)'
+    if (typeof datos['clave'] !== 'string' || datos['clave'].length < 8)
+      return 'clave requerida (mínimo 8 caracteres)'
     cambios['clave'] = datos['clave']
   }
   if (datos['rol'] !== undefined) {
@@ -49,9 +69,37 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
   // Todo el router de administración de usuarios queda reservado al admin.
   const sesion = exigirRoles(deps.tokens, 'ADMINISTRADOR')
 
-  rutas.get('/', sesion, async (_req, res, next) => {
+  rutas.get('/', sesion, async (req, res, next) => {
     try {
-      res.json(await new ListarUsuarios(deps.usuarios).ejecutar())
+      const rolQuery = req.query['rol']
+      const qQuery = req.query['q']
+      let rol: Rol | undefined = undefined
+      let q: string | undefined = undefined
+
+      if (rolQuery !== undefined) {
+        if (typeof rolQuery !== 'string' || !esRol(rolQuery)) {
+          return void res.status(400).json({ error: 'rol inválido' })
+        }
+        rol = rolQuery
+      }
+
+      if (qQuery !== undefined) {
+        if (typeof qQuery !== 'string') {
+          return void res.status(400).json({ error: 'parámetro q inválido' })
+        }
+        q = qQuery
+      }
+
+      res.json(await new ListarUsuarios(deps.usuarios).ejecutar(rol, q))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  // IMPORTANTE: Definir /resumen antes de /:id para que Express no lo interprete como un ID
+  rutas.get('/resumen', sesion, async (_req, res, next) => {
+    try {
+      res.json(await new ResumenUsuariosPorRol(deps.usuarios).ejecutar())
     } catch (error) {
       next(error)
     }
@@ -59,37 +107,81 @@ export function rutasUsuarios(deps: DependenciasUsuarios): Router {
 
   rutas.get('/:id', sesion, async (req, res, next) => {
     try {
-      if (!idValido(req.params['id'])) return void res.status(400).json({ error: 'id requerido' })
-      res.json(await new ObtenerUsuario(deps.usuarios).ejecutar(req.params['id']))
+      if (!idValido(req.params['id']))
+        return void res.status(400).json({ error: 'id requerido' })
+      res.json(
+        await new ObtenerUsuario(deps.usuarios).ejecutar(req.params['id']),
+      )
     } catch (error) {
-      if (error instanceof UsuarioNoEncontrado) return void res.status(404).json({ error: error.message })
+      if (error instanceof UsuarioNoEncontrado)
+        return void res.status(404).json({ error: error.message })
       next(error)
     }
   })
 
   rutas.patch('/:id', sesion, async (req, res, next) => {
     try {
-      if (!idValido(req.params['id'])) return void res.status(400).json({ error: 'id requerido' })
+      if (!idValido(req.params['id']))
+        return void res.status(400).json({ error: 'id requerido' })
       const cambios = validarCambios(req.body)
       if (typeof cambios === 'string' || Object.keys(cambios).length === 0) {
-        return void res.status(400).json({ error: typeof cambios === 'string' ? cambios : 'debe enviar cambios' })
+        return void res
+          .status(400)
+          .json({
+            error:
+              typeof cambios === 'string' ? cambios : 'debe enviar cambios',
+          })
       }
-      const usuario = await new ActualizarUsuario(deps.usuarios, deps.claves).ejecutar(req.params['id'], cambios)
-      res.json({ id: usuario.id, nombre: usuario.nombre, correo: usuario.correo, rol: usuario.rol, activo: usuario.activo })
+
+      const idEjecutor =
+        (res.locals['credencial'] as { id?: string } | undefined)?.id ??
+        (res.locals['usuario'] as { id?: string } | undefined)?.id ??
+        (req as unknown as { usuario?: { id: string } }).usuario?.id
+
+      const usuario = await new ActualizarUsuario(
+        deps.usuarios,
+        deps.claves,
+      ).ejecutar(req.params['id'], cambios, idEjecutor)
+
+      res.json({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: usuario.rol,
+        activo: usuario.activo,
+      })
     } catch (error) {
-      if (error instanceof UsuarioNoEncontrado) return void res.status(404).json({ error: error.message })
-      if (error instanceof CorreoYaRegistrado) return void res.status(409).json({ error: error.message })
+      if (error instanceof AutoDesactivacionNoPermitida)
+        return void res.status(400).json({ error: error.message })
+      if (error instanceof UsuarioNoEncontrado)
+        return void res.status(404).json({ error: error.message })
+      if (error instanceof CorreoYaRegistrado)
+        return void res.status(409).json({ error: error.message })
       next(error)
     }
   })
 
   rutas.delete('/:id', sesion, async (req, res, next) => {
     try {
-      if (!idValido(req.params['id'])) return void res.status(400).json({ error: 'id requerido' })
-      await new EliminarUsuario(deps.usuarios).ejecutar(req.params['id'])
+      if (!idValido(req.params['id']))
+        return void res.status(400).json({ error: 'id requerido' })
+
+      const idEjecutor =
+        (res.locals['credencial'] as { id?: string } | undefined)?.id ??
+        (res.locals['usuario'] as { id?: string } | undefined)?.id ??
+        (req as unknown as { usuario?: { id: string } }).usuario?.id ??
+        ''
+
+      await new EliminarUsuario(deps.usuarios).ejecutar(
+        req.params['id'],
+        idEjecutor,
+      )
       res.status(204).send()
     } catch (error) {
-      if (error instanceof UsuarioNoEncontrado) return void res.status(404).json({ error: error.message })
+      if (error instanceof AutoEliminacionNoPermitida)
+        return void res.status(400).json({ error: error.message })
+      if (error instanceof UsuarioNoEncontrado)
+        return void res.status(404).json({ error: error.message })
       next(error)
     }
   })
