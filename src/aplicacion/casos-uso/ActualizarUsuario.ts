@@ -1,9 +1,15 @@
 import type { Rol, Usuario } from '../../dominio/modelo/Usuario'
 import type { ServicioClaves, UsuarioDAO } from '../../dominio/puertos'
-import { CorreoYaRegistrado } from './RegistrarUsuario'
 import { UsuarioNoEncontrado } from './ObtenerUsuario'
+import { CorreoYaRegistrado } from './RegistrarUsuario'
 
-/** Cambios permitidos desde la frontera HTTP; todo opcional. */
+export class AutoDesactivacionNoPermitida extends Error {
+  constructor() {
+    super('Un administrador no puede desactivarse a sí mismo')
+    this.name = 'AutoDesactivacionNoPermitida'
+  }
+}
+
 export interface ActualizacionDTO {
   nombre?: string
   correo?: string
@@ -19,9 +25,17 @@ export class ActualizarUsuario {
     private readonly claves: ServicioClaves
   ) {}
 
-  async ejecutar(id: string, datos: ActualizacionDTO): Promise<Usuario> {
-    const existente = await this.usuarios.porId(id)
-    if (!existente) throw new UsuarioNoEncontrado(id)
+  async ejecutar(
+    idTarget: string,
+    datos: ActualizacionDTO,
+    idEjecutor?: string,
+  ): Promise<Usuario> {
+    if (idEjecutor && idTarget === idEjecutor && datos.activo === false) {
+      throw new AutoDesactivacionNoPermitida()
+    }
+
+    const existente = await this.usuarios.porId(idTarget)
+    if (!existente) throw new UsuarioNoEncontrado(idTarget)
 
     const correo = datos.correo?.trim().toLowerCase()
     if (correo && correo !== existente.correo) {
@@ -29,11 +43,13 @@ export class ActualizarUsuario {
       if (enUso) throw new CorreoYaRegistrado(correo)
     }
 
-    return this.usuarios.actualizar(id, {
+    return this.usuarios.actualizar(idTarget, {
       ...(datos.nombre !== undefined && { nombre: datos.nombre.trim() }),
       ...(correo !== undefined && { correo }),
-      ...(datos.clave !== undefined && { claveHash: await this.claves.cifrar(datos.clave) }),
       ...(datos.telefono !== undefined && { telefono: datos.telefono ? datos.telefono.trim() : null }),
+      ...(datos.clave !== undefined && {
+        claveHash: await this.claves.cifrar(datos.clave),
+      }),
       ...(datos.rol !== undefined && { rol: datos.rol }),
       ...(datos.activo !== undefined && { activo: datos.activo }),
     })
