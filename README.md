@@ -82,6 +82,62 @@ Si el puerto de `.env` es distinto de `3001`, reemplaza ese valor en la URL de
 Swagger y en el campo `servers` de `openapi.ts` cuando la API se publique detrás
 de un host o prefijo diferente.
 
+## Flujo de Autenticación
+
+La API utiliza tokens de acceso **JWT (JSON Web Tokens)** firmados mediante el algoritmo HS256 con una vigencia de 8 horas.
+
+1. **Registro de Usuarios (`POST /api/auth/registro`):**
+   - Requiere una sesión activa con el rol `ADMINISTRADOR`.
+   - Recibe `nombre`, `correo`, `clave` y opcionalmente `rol` (por defecto `CLIENTE`).
+   - La contraseña se encripta con `bcrypt` antes de guardarse.
+
+2. **Inicio de Sesión (`POST /api/auth/login`):**
+   - El usuario envía sus credenciales (`correo` y `clave`).
+   - Si son válidas, el servidor responde con los datos del perfil y el **token JWT**.
+
+3. **Uso del Token:**
+   - Para consumir endpoints protegidos, incluye el encabezado HTTP:
+     ```text
+     Authorization: Bearer <TOKEN_JWT>
+     ```
+   - En **Swagger UI**, haz clic en el botón **Authorize** arriba a la derecha, pega el token y confirma.
+
+4. **Expiración:**
+   - Si el token expira (tras 8 horas) o es inválido, la API responde con `401 Unauthorized`.
+   - Se debe volver a iniciar sesión en `/api/auth/login` para obtener un token nuevo.
+
+---
+
+## Matriz de Permisos por Rol
+
+| Módulo | Método | Endpoint | ADMINISTRADOR | ASESOR | CLIENTE | Notas de Acceso |
+| :--- | :---: | :--- | :---: | :---: | :---: | :--- |
+| **Público** | `GET` | `/api/salud` | ✅ | ✅ | ✅ | Sin autenticación |
+| | `GET` | `/api/docs` | ✅ | ✅ | ✅ | Documentación Swagger UI |
+| **Auth** | `POST` | `/api/auth/registro` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `POST` | `/api/auth/login` | ✅ | ✅ | ✅ | Público |
+| | `GET` | `/api/auth/perfil` | ✅ | ✅ | ✅ | Requiere token |
+| **Usuarios** | `GET` | `/api/usuarios` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `PATCH` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/usuarios/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Plataformas** | `POST` | `/api/plataformas` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/plataformas` | ✅ | ✅ | ✅ | Requiere token |
+| | `GET` | `/api/plataformas/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/plataformas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/plataformas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Cuentas** | `POST` | `/api/cuentas` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/cuentas` | ✅ | ✅ | ✅ | Cliente ve solo sus cuentas |
+| | `GET` | `/api/cuentas/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/cuentas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `DELETE` | `/api/cuentas/:id` | ✅ | ❌ | ❌ | Solo Administrador |
+| **Tickets** | `POST` | `/api/tickets` | ✅ | ✅ | ✅ | Requiere token |
+| | `GET` | `/api/tickets` | ✅ | ✅ | ✅ | Cliente ve sus tickets; Asesor los asignados |
+| | `GET` | `/api/tickets/resumen` | ✅ | ❌ | ❌ | Solo Administrador |
+| | `GET` | `/api/tickets/:id` | ✅ | ✅ | ✅ | Requiere token |
+| | `PATCH` | `/api/tickets/:id` | ✅ | ✅ | ❌ | Admin y Asesor |
+| | `DELETE` | `/api/tickets/:id` | ✅ | ✅ | ❌ | Admin y Asesor |
+
 ## API
 
 Todo cuelga del prefijo `/api`.
