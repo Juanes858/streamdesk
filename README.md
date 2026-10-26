@@ -270,6 +270,44 @@ Permisos actuales:
 - `CLIENTE`: inicia sesión, consulta su perfil, el catálogo de plataformas, sus cuentas y sus tickets, y puede crear tickets vinculados a sus propias cuentas.
 
 ---
+## Cuenta
+
+Una **Cuenta** es el acceso de un usuario a una **Plataforma** del catálogo
+(por ejemplo, un servicio de streaming o una herramienta institucional). Cada
+cuenta pertenece a un usuario y a una plataforma, tiene un periodo de vigencia
+y puede asociarse a **tickets** de soporte cuando el usuario reporta un problema.
+
+### Campos
+
+| Campo          | Descripción                                                   |
+|----------------|---------------------------------------------------------------|
+| `id`           | Identificador UUID de la cuenta                               |
+| `usuarioId`    | UUID del usuario dueño de la cuenta                           |
+| `plataformaId` | UUID de la plataforma a la que da acceso                      |
+| `correo`       | Correo con el que se inicia sesión en la plataforma           |
+| `clave`        | Contraseña de la cuenta. Solo se envía al crear o actualizar; **nunca se devuelve por la API** |
+| `fechaInicio`  | Fecha desde la que la cuenta está vigente                     |
+| `fechaFin`     | Fecha en la que termina su vigencia (debe ser posterior a `fechaInicio`) |
+| `estado`       | Estado actual: `ACTIVA`, `REPORTADA` o `VENCIDA`              |
+
+### Estados
+
+| Estado      | Significado                                                              |
+|-------------|--------------------------------------------------------------------------|
+| `ACTIVA`    | Estado por defecto. La cuenta está vigente y en uso normal.              |
+| `REPORTADA` | Se reportó un problema con la cuenta y está pendiente de revisión.       |
+| `VENCIDA`   | Terminó su periodo de vigencia y ya no debe usarse.                      |
+
+`GET /api/cuentas` admite el filtro opcional `?estado=ACTIVA|REPORTADA|VENCIDA`
+y responde `400` si el valor no es válido.
+
+### Por qué la clave nunca se devuelve por la API
+
+La clave es un secreto. Internamente solo se guarda su hash (`claveHash`), y
+toda respuesta HTTP pasa por `aCuentaDTO()`, que elimina ese campo antes de
+enviarla. El tipo de la respuesta (`CuentaDTO`) ni siquiera tiene el campo, así
+que no puede filtrarse por descuido en un endpoint nuevo. Si una clave se
+perdiera, se reemplaza actualizando la cuenta; nunca se consulta.git 
 
 ## Estructura y por qué es así
 

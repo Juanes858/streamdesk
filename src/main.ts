@@ -64,8 +64,24 @@ async function asegurarAdministrador(): Promise<void> {
   console.log(`Administrador inicial creado: ${correo}`)
 }
 
+async function asegurarPlataformasIniciales(): Promise<void> {
+  const iniciales = [
+    { nombre: 'NETFLIX', descripcion: 'Servicio de series y películas' },
+    { nombre: 'DISNEY+', descripcion: 'Servicio de entretenimiento de Disney' },
+    { nombre: 'HBO MAX', descripcion: 'Servicio de series y películas de HBO y Warner Bros.' },
+    { nombre: 'PRIME VIDEO', descripcion: 'Servicio de series y películas de Amazon' },
+  ]
+
+  for (const plataforma of iniciales) {
+    if (await plataformas.porNombre(plataforma.nombre)) continue
+    await plataformas.guardar({ ...plataforma, activa: true })
+    console.log(`Plataforma inicial creada: ${plataforma.nombre}`)
+  }
+}
+
 async function main(): Promise<void> {
   await asegurarAdministrador()
+  await asegurarPlataformasIniciales()
 
   // La consulta confirma que la conexión funciona sin imprimir hashes ni
   // información sensible en los logs.

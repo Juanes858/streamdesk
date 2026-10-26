@@ -1,0 +1,42 @@
+@host = http://localhost:3001/api
+
+### 1. Iniciar sesión como administrador
+# @name login
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "correo": "admin@uam.edu.co",
+  "clave": "PON_AQUI_LA_CLAVE_DE_ADMIN"
+}
+
+### 2. Crear una plataforma
+# @name crear
+POST {{host}}/plataformas
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{ "nombre": "PRUEBA TV" }
+
+### 3. Listar todas las plataformas
+GET {{host}}/plataformas
+Authorization: Bearer {{login.response.body.token}}
+
+### 4. Listar solo las activas (necesita KAN-50)
+GET {{host}}/plataformas?activa=true
+Authorization: Bearer {{login.response.body.token}}
+
+### 5. Ver la plataforma creada en el paso 2
+GET {{host}}/plataformas/{{crear.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### 6. Desactivar la plataforma
+PATCH {{host}}/plataformas/{{crear.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Content-Type: application/json
+
+{ "activa": false }
+
+### 7. Eliminar la plataforma
+DELETE {{host}}/plataformas/{{crear.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}

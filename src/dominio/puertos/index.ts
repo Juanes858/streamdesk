@@ -9,6 +9,7 @@ import type { EstadoTicket, Prioridad, Ticket, TicketNuevo } from '../modelo/Tic
 import type { CambiosUsuario, Rol, Usuario, UsuarioNuevo } from '../modelo/Usuario'
 import type { Plataforma, PlataformaNueva } from '../modelo/Plataforma'
 
+
 export interface UsuarioDAO {
   // Estos contratos permiten probar los casos de uso sin Express, Prisma o BD.
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
@@ -59,13 +60,16 @@ export interface PlataformaDAO {
   guardar(plataforma: PlataformaNueva): Promise<Plataforma>
   porId(id: string): Promise<Plataforma | null>
   porNombre(nombre: string): Promise<Plataforma | null>
-  listarTodas(): Promise<Plataforma[]>
+    listarTodas(filtros?: FiltrosPlataforma): Promise<Plataforma[]>
   actualizar(id: string, cambios: CambiosPlataforma): Promise<Plataforma>
   eliminar(id: string): Promise<void>
 }
 
+export type FiltrosPlataforma = { activa?: boolean }
+
 export type CambiosPlataforma = Partial<{
   nombre: string
+  descripcion: string | null
   activa: boolean
 }>
 
