@@ -11,11 +11,11 @@ import type { Plataforma, PlataformaNueva } from '../modelo/Plataforma'
 
 
 export interface UsuarioDAO {
-  // Estos contratos permiten probar los casos de uso sin Express, Prisma o BD.
   guardar(usuario: UsuarioNuevo): Promise<Usuario>
   porCorreo(correo: string): Promise<Usuario | null>
   porId(id: string): Promise<Usuario | null>
-  listarTodos(): Promise<Usuario[]>
+  listarTodos(rol?: Rol, q?: string): Promise<Usuario[]>
+  obtenerResumenPorRol(): Promise<Record<Rol, number>>
   actualizar(id: string, cambios: CambiosUsuario): Promise<Usuario>
   eliminar(id: string): Promise<void>
 }
@@ -37,10 +37,10 @@ export interface ServicioTokens {
 }
 
 export interface CuentaDAO {
-  // La aplicación depende de este contrato, no de CuentaDAOPrisma.
   guardar(cuenta: CuentaNueva): Promise<Cuenta>
   porId(id: string): Promise<Cuenta | null>
-  porUsuario(usuarioId: string): Promise<Cuenta[]>
+  porUsuario(usuarioId: string, estado?: EstadoCuenta): Promise<Cuenta[]>
+  porVencer(fechaLimite: Date): Promise<Cuenta[]>
   actualizar(id: string, cambios: CambiosCuenta): Promise<Cuenta>
   eliminar(id: string): Promise<void>
 }

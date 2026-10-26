@@ -10,6 +10,7 @@ const usuario = {
     id: { type: 'string', format: 'uuid', example: 'cd9c06cf-b57f-4e22-bc47-589a074e8c2c' },
     nombre: { type: 'string', example: 'Ana Agente' },
     correo: { type: 'string', format: 'email', example: 'ana@uam.edu.co' },
+    telefono: { type: 'string', nullable: true, example: '3001234567' },
     rol: { type: 'string', enum: ROLES, example: 'CLIENTE' },
     activo: { type: 'boolean', example: true },
   },
@@ -254,6 +255,45 @@ export const openapi = {
       },
     },
 
+    '/auth/clave': {
+      patch: {
+        tags: ['Autenticación'],
+        summary: 'Cambiar propia clave',
+        description: 'Permite a un usuario autenticado cambiar su contraseña enviando la clave actual y la nueva.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  claveActual: { type: 'string', format: 'password', example: 'Admin12345!' },
+                  nuevaClave: { type: 'string', format: 'password', minLength: 8, example: 'NuevaClave123!' },
+                },
+                required: ['claveActual', 'nuevaClave'],
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Clave actualizada correctamente.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { mensaje: { type: 'string', example: 'Clave actualizada correctamente' } },
+                },
+              },
+            },
+          },
+          400: respuestaError('Clave actual incorrecta o nueva clave inválida.', 'La clave actual es incorrecta'),
+          401: respuestaError('Sesión requerida.', 'Sesión requerida'),
+        },
+      },
+    },
+    
     '/usuarios': {
       get: {
         tags: ['Usuarios'],
@@ -611,6 +651,7 @@ export const openapi = {
         properties: {
           nombre: { type: 'string', minLength: 2 },
           correo: { type: 'string', format: 'email' },
+          telefono: { type: 'string', nullable: true, example: '3001234567' },
           clave: { type: 'string', format: 'password', minLength: 8 },
           rol: { type: 'string', enum: ROLES },
           activo: { type: 'boolean' },
