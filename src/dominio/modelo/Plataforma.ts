@@ -2,6 +2,7 @@
 export interface Plataforma {
   id: string
   nombre: string
+  descripcion: string | null
   activa: boolean
 }
 

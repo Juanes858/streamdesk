@@ -69,6 +69,7 @@ export type FiltrosPlataforma = { activa?: boolean }
 
 export type CambiosPlataforma = Partial<{
   nombre: string
+  descripcion: string | null
   activa: boolean
 }>
 
