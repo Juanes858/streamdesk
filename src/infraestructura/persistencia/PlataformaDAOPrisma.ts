@@ -6,7 +6,7 @@ import type { PrismaClient, Plataforma as FilaPlataforma } from './generado/inde
 const aDominio = (fila: FilaPlataforma): Plataforma => ({
   id: fila.id,
   nombre: fila.nombre,
-  descripcion: fila.descripcion,
+  descripcion: fila.descripcion ?? null,
   activa: fila.activa,
 })
 
